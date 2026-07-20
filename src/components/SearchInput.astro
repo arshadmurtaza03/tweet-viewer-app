@@ -1,0 +1,108 @@
+---
+---
+
+<div class="w-full max-w-2xl mx-auto">
+  <form id="hero-search-form" class="relative group">
+    <div class="relative flex items-center rounded-lg border border-hairline bg-canvas-soft-2/80 p-1.5 backdrop-blur-sm transition-all duration-200 focus-within:border-hairline-strong focus-within:ring-2 focus-within:ring-ink/20 hover:border-hairline-strong">
+      <!-- Search Icon -->
+      <div class="pl-3 pr-2 text-mute">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-5 w-5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+        </svg>
+      </div>
+
+      <!-- Main Input -->
+      <input
+        type="text"
+        id="hero-search-input"
+        placeholder="Enter @username or paste tweet link (e.g. @elonmusk)..."
+        spellcheck="false"
+        autocomplete="off"
+        required
+        class="w-full bg-transparent px-2 py-2.5 font-sans text-sm text-ink placeholder-mute focus:outline-none"
+      />
+
+      <!-- Submit Button (Vercel Black/White Pill) -->
+      <button
+        type="submit"
+        class="inline-flex items-center space-x-1.5 rounded-md bg-ink px-4 py-2 text-xs font-medium text-on-primary transition-transform active:scale-95 hover:opacity-90 shrink-0"
+      >
+        <span>Search</span>
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="h-3.5 w-3.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+        </svg>
+      </button>
+    </div>
+  </form>
+  <p class="mt-2 text-center font-mono text-[11px] text-mute">
+    Try: <button type="button" class="quick-preset text-link hover:underline" data-user="elonmusk">@elonmusk</button>, <button type="button" class="quick-preset text-link hover:underline" data-user="naval">@naval</button>, or paste any <code class="rounded bg-canvas-soft-2 px-1 text-ink">x.com/...</code> link
+  </p>
+</div>
+
+<script>
+  function setupSearch() {
+    const form = document.getElementById('hero-search-form') as HTMLFormElement | null;
+    const input = document.getElementById('hero-search-input') as HTMLInputElement | null;
+    const presets = document.querySelectorAll('.quick-preset');
+
+    function parseAndRedirect(val: string) {
+      const trimmed = val.trim();
+      if (!trimmed) return;
+
+      // Check if full tweet URL: twitter.com/user/status/12345 or x.com/user/status/12345
+      const statusMatch = trimmed.match(/(?:twitter|x)\.com\/[^\/]+\/status\/(\d+)/i);
+      if (statusMatch && statusMatch[1]) {
+        saveRecentSearch(trimmed);
+        window.location.href = `/status/${statusMatch[1]}`;
+        return;
+      }
+
+      // Check if profile URL: twitter.com/username or x.com/username
+      const profileMatch = trimmed.match(/(?:twitter|x)\.com\/([a-zA-Z0-9_]{1,15})/i);
+      if (profileMatch && profileMatch[1]) {
+        const username = profileMatch[1];
+        saveRecentSearch('@' + username);
+        window.location.href = `/${username}`;
+        return;
+      }
+
+      // Clean plain handle input (@username or username)
+      const cleanUsername = trimmed.replace(/^@/, '').replace(/[^a-zA-Z0-9_]/g, '');
+      if (cleanUsername) {
+        saveRecentSearch('@' + cleanUsername);
+        window.location.href = `/${cleanUsername}`;
+      }
+    }
+
+    function saveRecentSearch(handleOrQuery: string) {
+      try {
+        const key = 'mtv_recent_searches';
+        const existing = JSON.parse(localStorage.getItem(key) || '[]');
+        const updated = [handleOrQuery, ...existing.filter((item: string) => item !== handleOrQuery)].slice(0, 10);
+        localStorage.setItem(key, JSON.stringify(updated));
+        window.dispatchEvent(new Event('recent-searches-updated'));
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    if (form && input) {
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        parseAndRedirect(input.value);
+      });
+    }
+
+    presets.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const username = (btn as HTMLElement).dataset.user;
+        if (username) {
+          parseAndRedirect(username);
+        }
+      });
+    });
+  }
+
+  setupSearch();
+  document.addEventListener('astro:page-load', setupSearch);
+</script>

@@ -1,11 +1,154 @@
 ---
-import Welcome from '../components/Welcome.astro';
 import Layout from '../layouts/Layout.astro';
+import SearchInput from '../components/SearchInput.astro';
+import RecentSearches from '../components/RecentSearches.astro';
+import FavoritesGrid from '../components/FavoritesGrid.astro';
+import AdBanner from '../components/AdBanner.astro';
 
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
+export const prerender = true;
+
+const faqItems = [
+  {
+    q: 'What is My Tweet Viewer?',
+    a: 'My Tweet Viewer is an anonymous, privacy-first web viewer and media downloader for Twitter/X. It allows you to view public profiles, tweets, and media without logging in or creating an account.',
+  },
+  {
+    q: 'Do I need a Twitter/X account or login?',
+    a: 'No. You do not need an account, password, or API key. All content is fetched from public endpoints anonymously.',
+  },
+  {
+    q: 'Can I download Twitter videos and photos?',
+    a: 'Yes! Single tweet pages include direct 1-click download buttons for original MP4 video files and high-resolution JPG images straight from X’s public media CDN.',
+  },
+  {
+    q: 'How does privacy and caching work?',
+    a: 'We store zero user data or cookies on our servers. Your saved favorites and search history stay private inside your browser’s LocalStorage. Profile requests are edge-cached on Cloudflare Workers for lightning-fast response times.',
+  },
+];
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  'mainEntity': faqItems.map((item) => ({
+    '@type': 'Question',
+    'name': item.q,
+    'acceptedAnswer': {
+      '@type': 'Answer',
+      'text': item.a,
+    },
+  })),
+};
 ---
 
-<Layout>
-	<Welcome />
+<Layout
+  title="My Tweet Viewer — Anonymous Twitter & X Web Viewer"
+  description="Browse public Twitter/X profiles, read tweets, unroll threads, and download high-quality videos & photos anonymously. No account needed."
+>
+  <!-- Hero Section -->
+  <section class="relative overflow-hidden pt-16 pb-20 border-b border-hairline vercel-mesh-bg">
+    <div class="mx-auto max-w-4xl px-4 text-center">
+      <!-- Feature Pill Badge -->
+      <div class="inline-flex items-center space-x-2 rounded-full border border-hairline bg-canvas-soft-2 px-3 py-1 text-xs font-mono text-mute mb-6">
+        <span class="h-2 w-2 rounded-full bg-cyan"></span>
+        <span>100% Anonymous &bull; No Login Required</span>
+      </div>
+
+      <!-- Main Vercel-style Sentence Case Headline -->
+      <h1 class="font-sans text-4xl sm:text-5xl md:text-6xl font-semibold tracking-tighter text-ink leading-[1.08] mb-4">
+        Browse Twitter, <span class="vercel-gradient-text">anonymously.</span>
+      </h1>
+
+      <!-- Supporting Body Lead -->
+      <p class="mx-auto max-w-2xl font-sans text-base sm:text-lg text-body mb-8 leading-relaxed">
+        Read public profiles, explore tweets, unroll long threads, and download high-definition MP4 videos &amp; photos without an account.
+      </p>
+
+      <!-- Primary Search Input Component -->
+      <SearchInput />
+
+      <!-- Static Ad Banner Container Directly Under Primary Search Form -->
+      <div class="mt-6 w-full max-w-2xl mx-auto">
+        <AdBanner slotId="hero-under-search" variant="banner" />
+      </div>
+
+      <!-- Client Recent Searches -->
+      <RecentSearches />
+    </div>
+  </section>
+
+  <!-- Local Saved Favorites Grid -->
+  <FavoritesGrid />
+
+  <!-- 3-Up Feature Highlights (Vercel Marketing Cards) -->
+  <section id="features" class="py-16 border-t border-b border-hairline bg-canvas-soft">
+    <div class="mx-auto max-w-6xl px-4 sm:px-6">
+      <div class="text-center mb-12">
+        <h2 class="font-mono text-xs uppercase tracking-wider text-mute mb-2">Built For Performance &amp; Privacy</h2>
+        <p class="font-sans text-2xl font-semibold tracking-tight text-ink">Engineered without competitor drawbacks.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Feature 1 -->
+        <div class="rounded-lg border border-hairline bg-canvas p-6 transition-all hover:border-hairline-strong vercel-card-glow">
+          <div class="flex h-10 w-10 items-center justify-center rounded-md bg-canvas-soft-2 border border-hairline text-ink mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-5 w-5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
+            </svg>
+          </div>
+          <h3 class="font-sans text-base font-semibold text-ink mb-2">100% Anonymous</h3>
+          <p class="font-sans text-xs text-body leading-relaxed">
+            Zero tracking cookies, zero logins, zero database storage. Browse profiles and read tweets completely privately.
+          </p>
+        </div>
+
+        <!-- Feature 2 -->
+        <div class="rounded-lg border border-hairline bg-canvas p-6 transition-all hover:border-hairline-strong vercel-card-glow">
+          <div class="flex h-10 w-10 items-center justify-center rounded-md bg-canvas-soft-2 border border-hairline text-cyan mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-5 w-5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z" />
+            </svg>
+          </div>
+          <h3 class="font-sans text-base font-semibold text-ink mb-2">Global Edge Caching</h3>
+          <p class="font-sans text-xs text-body leading-relaxed">
+            Powered by Cloudflare Workers. 30-minute edge cache prevents API rate limits and delivers ultra-fast page loads.
+          </p>
+        </div>
+
+        <!-- Feature 3 -->
+        <div class="rounded-lg border border-hairline bg-canvas p-6 transition-all hover:border-hairline-strong vercel-card-glow">
+          <div class="flex h-10 w-10 items-center justify-center rounded-md bg-canvas-soft-2 border border-hairline text-pink-500 mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-5 w-5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+            </svg>
+          </div>
+          <h3 class="font-sans text-base font-semibold text-ink mb-2">Direct Media Saving</h3>
+          <p class="font-sans text-xs text-body leading-relaxed">
+            Download high-res JPG photos and MP4 videos directly from X's CDN. No server bandwidth limits or low-res clips.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ Section with Schema.org JSON-LD -->
+  <section id="faq" class="py-16">
+    <div class="mx-auto max-w-3xl px-4">
+      <div class="text-center mb-10">
+        <h2 class="font-mono text-xs uppercase tracking-wider text-mute mb-2">Frequently Asked Questions</h2>
+        <p class="font-sans text-2xl font-semibold tracking-tight text-ink">Everything you need to know.</p>
+      </div>
+
+      <div class="space-y-4">
+        {faqItems.map((item) => (
+          <div class="rounded-lg border border-hairline bg-canvas-soft-2/50 p-5">
+            <h3 class="font-sans text-sm font-semibold text-ink mb-2">{item.q}</h3>
+            <p class="font-sans text-xs text-body leading-relaxed">{item.a}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- JSON-LD Structured Data for SEO -->
+  <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
 </Layout>

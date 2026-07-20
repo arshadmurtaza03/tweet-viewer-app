@@ -1,0 +1,54 @@
+---
+---
+
+<div id="recent-searches-container" class="hidden w-full max-w-2xl mx-auto mt-6">
+  <div class="flex items-center justify-between mb-2">
+    <span class="font-mono text-xs text-mute uppercase tracking-wider">Recent Searches</span>
+    <button id="clear-recent-btn" class="font-mono text-[11px] text-mute hover:text-ink transition-colors">Clear</button>
+  </div>
+  <div id="recent-searches-list" class="flex flex-wrap gap-2">
+    <!-- JS populated pills -->
+  </div>
+</div>
+
+<script>
+  function loadRecentSearches() {
+    const container = document.getElementById('recent-searches-container');
+    const list = document.getElementById('recent-searches-list');
+    const clearBtn = document.getElementById('clear-recent-btn');
+
+    if (!container || !list) return;
+
+    try {
+      const items: string[] = JSON.parse(localStorage.getItem('mtv_recent_searches') || '[]');
+      
+      if (items.length === 0) {
+        container.classList.add('hidden');
+        return;
+      }
+
+      container.classList.remove('hidden');
+      list.innerHTML = items.map(item => {
+        const username = item.replace(/^@/, '');
+        return `
+          <a href="/${username}" class="inline-flex items-center space-x-1.5 rounded-full border border-hairline bg-canvas-soft-2 px-3 py-1 text-xs text-body transition-colors hover:border-hairline-strong hover:text-ink">
+            <span>${item}</span>
+          </a>
+        `;
+      }).join('');
+
+      if (clearBtn) {
+        clearBtn.onclick = () => {
+          localStorage.removeItem('mtv_recent_searches');
+          container.classList.add('hidden');
+        };
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  loadRecentSearches();
+  window.addEventListener('recent-searches-updated', loadRecentSearches);
+  document.addEventListener('astro:page-load', loadRecentSearches);
+</script>

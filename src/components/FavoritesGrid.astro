@@ -1,0 +1,99 @@
+---
+---
+
+<section id="favorites" class="w-full max-w-4xl mx-auto mt-12 px-4">
+  <div class="flex items-center justify-between border-b border-hairline pb-3 mb-6">
+    <div class="flex items-center space-x-2">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-4 w-4 text-pink-500">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" />
+      </svg>
+      <h2 class="font-sans text-lg font-semibold tracking-tight text-ink">Saved Favorites</h2>
+    </div>
+    <span id="favorites-count" class="font-mono text-xs text-mute">0 saved</span>
+  </div>
+
+  <!-- Favorites Grid container -->
+  <div id="favorites-grid-content">
+    <!-- JS rendered cards or empty state -->
+  </div>
+</section>
+
+<script>
+  interface FavoriteItem {
+    username: string;
+    name?: string;
+    avatar?: string;
+  }
+
+  function renderFavorites() {
+    const container = document.getElementById('favorites-grid-content');
+    const countEl = document.getElementById('favorites-count');
+
+    if (!container) return;
+
+    try {
+      const favorites: FavoriteItem[] = JSON.parse(localStorage.getItem('mtv_favorites') || '[]');
+
+      if (countEl) {
+        countEl.textContent = `${favorites.length} saved`;
+      }
+
+      if (favorites.length === 0) {
+        container.innerHTML = `
+          <div class="rounded-lg border border-dashed border-hairline bg-canvas-soft-2/50 p-8 text-center">
+            <div class="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-canvas border border-hairline text-mute mb-3">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-5 w-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" />
+              </svg>
+            </div>
+            <h3 class="font-sans text-sm font-medium text-ink">No favorite profiles saved yet</h3>
+            <p class="mt-1 font-sans text-xs text-mute">Click the heart icon on any user profile page to bookmark them for fast 1-click access.</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = `
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          ${favorites.map(item => `
+            <div class="group relative flex items-center justify-between rounded-lg border border-hairline bg-canvas-soft-2 p-3 transition-all hover:border-hairline-strong hover:bg-canvas-soft-2/80">
+              <a href="/${item.username}" class="flex items-center space-x-3 min-w-0 flex-1 pr-2">
+                <div class="h-10 w-10 shrink-0 overflow-hidden rounded-full border border-hairline bg-canvas">
+                  <img src="${item.avatar || 'https://abs.twimg.com/sticky/default_profile_images/default_profile_normal.png'}" alt="${item.username}" class="h-full w-full object-cover" />
+                </div>
+                <div class="min-w-0">
+                  <p class="truncate text-xs font-semibold text-ink">${item.name || item.username}</p>
+                  <p class="truncate font-mono text-[11px] text-mute">@${item.username}</p>
+                </div>
+              </a>
+              <button data-remove="${item.username}" title="Remove favorite" class="remove-fav-btn rounded p-1 text-mute hover:bg-canvas hover:text-red-400 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-4 w-4">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          `).join('')}
+        </div>
+      `;
+
+      // Attach remove handlers
+      document.querySelectorAll('.remove-fav-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          const targetUser = (btn as HTMLElement).dataset.remove;
+          if (targetUser) {
+            const updated = favorites.filter(f => f.username !== targetUser);
+            localStorage.setItem('mtv_favorites', JSON.stringify(updated));
+            renderFavorites();
+          }
+        });
+      });
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  renderFavorites();
+  window.addEventListener('favorites-updated', renderFavorites);
+  document.addEventListener('astro:page-load', renderFavorites);
+</script>

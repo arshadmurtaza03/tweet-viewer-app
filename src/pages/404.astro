@@ -1,0 +1,41 @@
+---
+import Layout from '../layouts/Layout.astro';
+import SearchInput from '../components/SearchInput.astro';
+
+export const prerender = true;
+---
+
+<Layout
+  title="404: Page Not Found — My Tweet Viewer"
+  description="The requested Twitter profile or tweet could not be found."
+>
+  <div class="mx-auto max-w-2xl px-4 py-24 text-center">
+    <div class="rounded-xl border border-hairline bg-canvas-soft-2/60 p-10 shadow-2xl vercel-card-glow">
+      <!-- 404 Mono Eyebrow -->
+      <div class="inline-flex items-center space-x-2 rounded-full border border-hairline bg-canvas px-3 py-1 font-mono text-xs text-mute mb-4">
+        <span class="text-error font-bold">404</span>
+        <span>&bull;</span>
+        <span>Route Not Found</span>
+      </div>
+
+      <h1 class="font-sans text-3xl font-semibold tracking-tight text-ink mb-3">
+        Lost in the timeline.
+      </h1>
+      
+      <p class="font-sans text-xs sm:text-sm text-body leading-relaxed max-w-md mx-auto mb-8">
+        The user profile, tweet status, or resource you were looking for does not exist, has been removed, or is set to private.
+      </p>
+
+      <div class="pt-4 border-t border-hairline">
+        <p class="font-mono text-xs text-mute mb-4">Search for another @username or paste a link:</p>
+        <SearchInput />
+      </div>
+
+      <div class="mt-8 flex justify-center space-x-4 text-xs font-mono">
+        <a href="/" class="text-link hover:underline">&larr; Return to Home</a>
+        <span class="text-mute">&bull;</span>
+        <a href="/#favorites" class="text-link hover:underline">Saved Favorites</a>
+      </div>
+    </div>
+  </div>
+</Layout>

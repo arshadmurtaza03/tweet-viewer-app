@@ -1,0 +1,66 @@
+---
+const currentYear = new Date().getFullYear();
+---
+
+<footer class="w-full border-t border-hairline bg-canvas pt-12 pb-16">
+  <div class="mx-auto max-w-6xl px-4 sm:px-6">
+    <div class="grid grid-cols-1 gap-8 md:grid-cols-4">
+      <!-- Column 1: Brand & Bio -->
+      <div class="space-y-4">
+        <div class="flex items-center space-x-2">
+          <div class="flex h-6 w-6 items-center justify-center rounded bg-ink text-on-primary">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="h-3 w-3">
+              <path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.936 9.936 0 0024 4.59z"/>
+            </svg>
+          </div>
+          <span class="font-sans text-sm font-semibold tracking-tight text-ink">My Tweet Viewer</span>
+        </div>
+        <p class="text-xs text-body leading-relaxed">
+          The privacy-first, zero-tracking web viewer and media downloader for Twitter/X public content.
+        </p>
+        <div class="inline-flex items-center space-x-2 rounded border border-hairline bg-canvas-soft-2 px-2.5 py-1 text-[11px] font-mono text-mute">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-3.5 w-3.5 text-emerald-400">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
+          </svg>
+          <span>No Cookies &bull; No Tracking</span>
+        </div>
+      </div>
+
+      <!-- Column 2: Product -->
+      <div class="space-y-3">
+        <h4 class="font-mono text-xs uppercase tracking-wider text-mute">Product</h4>
+        <ul class="space-y-2 text-xs text-body">
+          <li><a href="/" class="hover:text-ink transition-colors">Anonymous Search</a></li>
+          <li><a href="/#favorites" class="hover:text-ink transition-colors">Local Favorites</a></li>
+          <li><a href="/#features" class="hover:text-ink transition-colors">Media Downloader</a></li>
+          <li><a href="/#faq" class="hover:text-ink transition-colors">Thread Unroller</a></li>
+        </ul>
+      </div>
+
+      <!-- Column 3: Features -->
+      <div class="space-y-3">
+        <h4 class="font-mono text-xs uppercase tracking-wider text-mute">Architecture</h4>
+        <ul class="space-y-2 text-xs text-body">
+          <li><span class="text-mute">Platform:</span> Cloudflare Workers</li>
+          <li><span class="text-mute">Framework:</span> Astro SSR</li>
+          <li><span class="text-mute">Caching:</span> Global Edge API</li>
+          <li><span class="text-mute">Database:</span> Zero DB / LocalStorage</li>
+        </ul>
+      </div>
+
+      <!-- Column 4: Disclaimer & Legal -->
+      <div class="space-y-3">
+        <h4 class="font-mono text-xs uppercase tracking-wider text-mute">Disclaimer</h4>
+        <p class="text-xs text-mute/80 leading-relaxed">
+          My Tweet Viewer is an independent web tool and is not affiliated with, endorsed by, or sponsored by X Corp or Twitter, Inc. All trademarks belong to their respective owners.
+        </p>
+      </div>
+    </div>
+
+    <!-- Bottom Row -->
+    <div class="mt-12 flex flex-col items-center justify-between border-t border-hairline pt-6 text-xs text-mute sm:flex-row">
+      <p>&copy; {currentYear} mytweetviewer.com. All rights reserved.</p>
+      <p class="font-mono text-[11px] mt-2 sm:mt-0">Built for speed &amp; privacy</p>
+    </div>
+  </div>
+</footer>

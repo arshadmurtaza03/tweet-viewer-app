@@ -1,0 +1,49 @@
+---
+---
+
+<header class="sticky top-0 z-50 w-full border-b border-hairline bg-canvas/80 backdrop-blur-md transition-all">
+  <div class="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
+    <!-- Brand Logo -->
+    <a href="/" class="group flex items-center space-x-2.5 transition-opacity hover:opacity-90">
+      <div class="flex h-8 w-8 items-center justify-center rounded-sm bg-ink text-on-primary transition-transform group-hover:scale-105">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="h-4 w-4">
+          <path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.936 9.936 0 0024 4.59z"/>
+        </svg>
+      </div>
+      <span class="font-sans text-base font-semibold tracking-tight text-ink">
+        My Tweet Viewer<span class="text-link">.</span>
+      </span>
+    </a>
+
+    <!-- Compact Quick Search in Header -->
+    <div class="hidden md:flex items-center">
+      <form action="/" method="GET" class="relative w-64">
+        <input
+          type="text"
+          name="q"
+          placeholder="Search @username…"
+          spellcheck="false"
+          autocomplete="off"
+          class="w-full h-8 rounded-sm border border-hairline bg-canvas-soft-2 px-3 pl-8 text-xs text-ink placeholder-mute transition-all focus:border-hairline-strong focus:outline-none focus:ring-1 focus:ring-ink"
+        />
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="absolute left-2.5 top-2 h-4 w-4 text-mute">
+          <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+        </svg>
+      </form>
+    </div>
+
+    <!-- Navigation links & Status badge -->
+    <nav class="flex items-center space-x-3 text-xs">
+      <a href="/" class="px-2.5 py-1.5 font-medium text-body transition-colors hover:text-ink">
+        Home
+      </a>
+      <a href="#favorites" class="px-2.5 py-1.5 font-medium text-body transition-colors hover:text-ink">
+        Saved
+      </a>
+      <span class="inline-flex items-center space-x-1.5 rounded-full border border-hairline bg-canvas-soft-2 px-2.5 py-1 text-[11px] font-mono text-mute">
+        <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span>Edge Active</span>
+      </span>
+    </nav>
+  </div>
+</header>

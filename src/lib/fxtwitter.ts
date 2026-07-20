@@ -9,7 +9,7 @@ export async function fetchFixTweetProfile(username: string): Promise<{ user?: F
   try {
     const res = await fetch(`https://api.fxtwitter.com/${cleanUser}`, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) MyTweetViewer/1.0',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept': 'application/json',
       },
     });
@@ -27,12 +27,15 @@ export async function fetchFixTweetProfile(username: string): Promise<{ user?: F
 
     const user = data.user;
     if (user) {
-      // Normalize avatar & banner URLs
+      // Normalize metric fields across FixTweet versions
+      user.followers = user.followers ?? user.followers_count ?? 0;
+      user.following = user.following ?? user.following_count ?? user.friends_count ?? 0;
+      user.tweets = user.tweets ?? user.statuses_count ?? 0;
+      user.likes = user.likes ?? user.likes_count ?? 0;
       user.avatar_url = user.avatar_url || user.profile_image_url;
       user.banner_url = user.banner_url || user.profile_banner_url;
     }
 
-    // FixTweet single user endpoint might return a recent tweet array if available
     const tweets = data.tweets || (data.tweet ? [data.tweet] : []);
 
     return { user, tweets };
@@ -50,7 +53,7 @@ export async function fetchFixTweetStatus(tweetId: string): Promise<{ tweet?: Fi
   try {
     const res = await fetch(`https://api.fxtwitter.com/status/${tweetId}`, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) MyTweetViewer/1.0',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept': 'application/json',
       },
     });
@@ -60,7 +63,15 @@ export async function fetchFixTweetStatus(tweetId: string): Promise<{ tweet?: Fi
     }
 
     const data: FixTweetResponse = await res.json();
-    return { tweet: data.tweet };
+    if (data.tweet) {
+      // Normalize author avatar
+      if (data.tweet.author) {
+        data.tweet.author.avatar_url = data.tweet.author.avatar_url || data.tweet.author.profile_image_url;
+      }
+      return { tweet: data.tweet };
+    }
+
+    return { error: 'Tweet unavailable' };
   } catch (e) {
     return { error: 'Failed to fetch tweet details' };
   }

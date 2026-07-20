@@ -13,7 +13,7 @@
     saveRecent: function (query) {
       if (!query) return;
       const recent = this.getRecent();
-      const updated = [query, ...recent.filter(i => i !== query)].slice(0, 10);
+      const updated = [query, ...recent.filter(function (i) { return i !== query; })].slice(0, 10);
       localStorage.setItem(RECENT_KEY, JSON.stringify(updated));
       window.dispatchEvent(new Event('recent-searches-updated'));
     },
@@ -29,6 +29,11 @@
       const statusMatch = trimmed.match(/(?:twitter|x)\.com\/[^\/]+\/status\/(\d+)/i);
       if (statusMatch && statusMatch[1]) {
         return { type: 'status', id: statusMatch[1], raw: trimmed };
+      }
+
+      // Direct ID
+      if (/^\d{10,20}$/.test(trimmed)) {
+        return { type: 'status', id: trimmed, raw: '#' + trimmed };
       }
 
       // Profile URL match

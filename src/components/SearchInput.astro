@@ -3,7 +3,7 @@
 
 <div class="w-full max-w-2xl mx-auto">
   <form id="hero-search-form" class="relative group">
-    <div class="relative flex items-center rounded-lg border border-hairline bg-canvas-soft-2/80 p-1.5 backdrop-blur-sm transition-all duration-200 focus-within:border-hairline-strong focus-within:ring-2 focus-within:ring-ink/20 hover:border-hairline-strong">
+    <div class="relative flex items-center rounded-lg border border-hairline bg-canvas-soft-2/90 p-1.5 backdrop-blur-sm transition-all duration-200 focus-within:border-hairline-strong focus-within:ring-2 focus-within:ring-ink/20 hover:border-hairline-strong shadow-lg">
       <!-- Search Icon -->
       <div class="pl-3 pr-2 text-mute">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-5 w-5">
@@ -15,14 +15,14 @@
       <input
         type="text"
         id="hero-search-input"
-        placeholder="Enter @username or paste tweet link (e.g. @elonmusk)..."
+        placeholder="Search @username or paste tweet link (e.g. x.com/user/status/...)"
         spellcheck="false"
         autocomplete="off"
         required
         class="w-full bg-transparent px-2 py-2.5 font-sans text-sm text-ink placeholder-mute focus:outline-none"
       />
 
-      <!-- Submit Button (Vercel Black/White Pill) -->
+      <!-- Submit Button -->
       <button
         type="submit"
         class="inline-flex items-center space-x-1.5 rounded-md bg-ink px-4 py-2 text-xs font-medium text-on-primary transition-transform active:scale-95 hover:opacity-90 shrink-0"
@@ -34,8 +34,8 @@
       </button>
     </div>
   </form>
-  <p class="mt-2 text-center font-mono text-[11px] text-mute">
-    Try: <button type="button" class="quick-preset text-link hover:underline" data-user="elonmusk">@elonmusk</button>, <button type="button" class="quick-preset text-link hover:underline" data-user="naval">@naval</button>, or paste any <code class="rounded bg-canvas-soft-2 px-1 text-ink">x.com/...</code> link
+  <p class="mt-2.5 text-center font-mono text-[11px] text-mute">
+    Try: <button type="button" class="quick-preset text-link hover:underline font-medium" data-user="elonmusk">@elonmusk</button>, <button type="button" class="quick-preset text-link hover:underline font-medium" data-user="naval">@naval</button>, <button type="button" class="quick-preset text-link hover:underline font-medium" data-user="astrodotbuild">@astrodotbuild</button>, or paste any tweet link
   </p>
 </div>
 
@@ -49,7 +49,7 @@
       const trimmed = val.trim();
       if (!trimmed) return;
 
-      // Check if full tweet URL: twitter.com/user/status/12345 or x.com/user/status/12345
+      // 1. Status URL: x.com/username/status/12345 or twitter.com/username/status/12345
       const statusMatch = trimmed.match(/(?:twitter|x)\.com\/[^\/]+\/status\/(\d+)/i);
       if (statusMatch && statusMatch[1]) {
         saveRecentSearch(trimmed);
@@ -57,7 +57,14 @@
         return;
       }
 
-      // Check if profile URL: twitter.com/username or x.com/username
+      // 2. Direct numeric Tweet ID
+      if (/^\d{10,20}$/.test(trimmed)) {
+        saveRecentSearch('#' + trimmed);
+        window.location.href = `/status/${trimmed}`;
+        return;
+      }
+
+      // 3. Profile URL: x.com/username or twitter.com/username
       const profileMatch = trimmed.match(/(?:twitter|x)\.com\/([a-zA-Z0-9_]{1,15})/i);
       if (profileMatch && profileMatch[1]) {
         const username = profileMatch[1];
@@ -66,7 +73,7 @@
         return;
       }
 
-      // Clean plain handle input (@username or username)
+      // 4. Handle input (@username or username)
       const cleanUsername = trimmed.replace(/^@/, '').replace(/[^a-zA-Z0-9_]/g, '');
       if (cleanUsername) {
         saveRecentSearch('@' + cleanUsername);

@@ -13,9 +13,9 @@ const { mediaUrl, mediaType, filename = 'media' } = Astro.props;
   data-media-url={mediaUrl}
   data-filename={filename}
   data-type={mediaType}
-  class="direct-media-dl-btn inline-flex items-center space-x-1.5 rounded-md bg-ink px-3.5 py-2 text-xs font-medium text-on-primary shadow-sm transition-transform active:scale-95 hover:opacity-90"
+  class="direct-media-dl-btn inline-flex items-center space-x-1.5 rounded-md bg-ink px-3.5 py-2 text-xs font-medium text-on-primary shadow-sm transition-transform active:scale-95 hover:opacity-90 cursor-pointer"
 >
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="h-4 w-4">
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="h-4 w-4 text-cyan">
     <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
   </svg>
   <span>Download {mediaType === 'video' ? 'MP4 Video' : 'HD Photo'}</span>
@@ -35,12 +35,14 @@ const { mediaUrl, mediaType, filename = 'media' } = Astro.props;
         if (!url) return;
 
         const originalText = el.innerHTML;
-        el.innerHTML = `<span class="animate-spin mr-1">&circlearrowright;</span> Saving…`;
+        el.innerHTML = `<span class="animate-pulse font-mono text-xs">Saving…</span>`;
         el.disabled = true;
 
         try {
-          // Direct fetch from CDN
+          // Direct fetch from X CDN
           const res = await fetch(url);
+          if (!res.ok) throw new Error('CORS or Network restriction');
+          
           const blob = await res.blob();
           const blobUrl = URL.createObjectURL(blob);
 
@@ -53,16 +55,27 @@ const { mediaUrl, mediaType, filename = 'media' } = Astro.props;
           document.body.removeChild(a);
           URL.revokeObjectURL(blobUrl);
 
-          el.innerHTML = `&check; Saved!`;
+          el.innerHTML = `✓ Saved!`;
           setTimeout(() => {
             el.innerHTML = originalText;
             el.disabled = false;
-          }, 2000);
+          }, 2500);
         } catch (e) {
-          // Fallback if CORS prevents blob fetch: open in new tab with download hint
-          window.open(url, '_blank');
-          el.innerHTML = originalText;
-          el.disabled = false;
+          // Fallback if CORS prevents blob fetch: open asset in new tab
+          const a = document.createElement('a');
+          a.href = url;
+          a.target = '_blank';
+          a.rel = 'noopener noreferrer';
+          a.download = `${name}.${type === 'video' ? 'mp4' : 'jpg'}`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+
+          el.innerHTML = `✓ Opened Media`;
+          setTimeout(() => {
+            el.innerHTML = originalText;
+            el.disabled = false;
+          }, 2500);
         }
       });
     });

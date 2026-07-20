@@ -1,11 +1,16 @@
 export interface FixTweetUser {
-  id: string;
+  id?: string;
   name: string;
   screen_name: string;
   description?: string;
   location?: string;
   url?: string;
   protected?: boolean;
+  // Normalized & raw metric fields
+  followers?: number;
+  following?: number;
+  tweets?: number;
+  likes?: number;
   followers_count?: number;
   following_count?: number;
   friends_count?: number;
@@ -21,6 +26,10 @@ export interface FixTweetUser {
   website?: {
     url?: string;
     display_url?: string;
+  };
+  verification?: {
+    verified?: boolean;
+    type?: string;
   };
 }
 
@@ -51,9 +60,9 @@ export interface FixTweetObject {
   };
   quote?: FixTweetObject;
   replying_to?: {
-    screen_name: string;
-    post_id: string;
-  };
+    screen_name?: string;
+    post_id?: string;
+  } | null;
 }
 
 export interface FixTweetResponse {
@@ -107,7 +116,7 @@ export interface SyndicationTweet {
   retweet_count?: number;
   lang?: string;
   user: {
-    id_str: string;
+    id_str?: string;
     name: string;
     screen_name: string;
     profile_image_url_https: string;

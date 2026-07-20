@@ -9,34 +9,39 @@ interface Props {
 const { user } = Astro.props;
 const avatar = user.avatar_url || user.profile_image_url || 'https://abs.twimg.com/sticky/default_profile_images/default_profile_normal.png';
 const banner = user.banner_url || user.profile_banner_url;
+
+// Normalized stats
+const followersCount = user.followers ?? user.followers_count ?? 0;
+const followingCount = user.following ?? user.following_count ?? user.friends_count ?? 0;
+const tweetsCount = user.tweets ?? user.statuses_count ?? 0;
 ---
 
 <div class="relative w-full border-b border-hairline bg-canvas-soft">
   <!-- Banner Container -->
-  <div class="h-44 sm:h-52 w-full bg-gradient-to-r from-cyan-900/30 via-violet-900/20 to-canvas-soft relative overflow-hidden">
+  <div class="h-44 sm:h-56 w-full bg-gradient-to-r from-cyan-950/40 via-violet-950/30 to-canvas-soft relative overflow-hidden">
     {banner ? (
       <img src={banner} alt={`${user.name} banner`} class="h-full w-full object-cover" />
     ) : (
-      <div class="absolute inset-0 vercel-mesh-bg opacity-40"></div>
+      <div class="absolute inset-0 vercel-mesh-bg opacity-50"></div>
     )}
   </div>
 
-  <!-- Profile Content Container -->
-  <div class="mx-auto max-w-4xl px-4 pb-6">
+  <!-- Profile Info Container -->
+  <div class="mx-auto max-w-5xl px-4 pb-6">
     <div class="flex items-end justify-between -mt-16 sm:-mt-20 mb-4">
       <!-- Avatar -->
-      <div class="relative h-24 w-24 sm:h-32 sm:w-32 overflow-hidden rounded-full border-4 border-canvas bg-canvas shadow-xl">
+      <div class="relative h-24 w-24 sm:h-32 sm:w-32 overflow-hidden rounded-full border-4 border-canvas bg-canvas shadow-2xl">
         <img src={avatar} alt={user.name} class="h-full w-full object-cover" />
       </div>
 
-      <!-- Action Buttons (Favorite toggle) -->
+      <!-- Favorite / Bookmark Button -->
       <div class="flex items-center space-x-2">
         <button
           id="toggle-fav-btn"
           data-username={user.screen_name}
           data-name={user.name}
           data-avatar={avatar}
-          class="inline-flex items-center space-x-2 rounded-full border border-hairline bg-canvas-soft-2 px-4 py-2 text-xs font-medium text-ink transition-all hover:border-hairline-strong active:scale-95"
+          class="inline-flex items-center space-x-2 rounded-full border border-hairline bg-canvas-soft-2 px-4 py-2 text-xs font-medium text-ink transition-all hover:border-hairline-strong active:scale-95 shadow-sm"
         >
           <svg id="fav-icon-empty" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-4 w-4 text-pink-500">
             <path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" />
@@ -61,14 +66,14 @@ const banner = user.banner_url || user.profile_banner_url;
       </div>
     </div>
 
-    <!-- User Information -->
+    <!-- User Details & Bio -->
     <div class="space-y-3">
       <div>
         <h1 class="font-sans text-2xl sm:text-3xl font-semibold tracking-tight text-ink flex items-center space-x-2">
           <span>{user.name}</span>
-          {user.protected && (
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-5 w-5 text-warning">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
+          {user.verification?.verified && (
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="h-5 w-5 text-link">
+              <path fill-rule="evenodd" d="M8.603 3.799A4.49 4.49 0 0 1 12 2.25c1.357 0 2.573.6 3.397 1.549a4.49 4.49 0 0 1 3.498 1.307 4.491 4.491 0 0 1 1.307 3.497A4.49 4.49 0 0 1 21.75 12a4.49 4.49 0 0 1-1.549 3.397 4.491 4.491 0 0 1-1.307 3.497 4.491 4.491 0 0 1-3.497 1.307A4.49 4.49 0 0 1 12 21.75a4.49 4.49 0 0 1-3.397-1.549 4.49 4.49 0 0 1-3.498-1.307 4.491 4.491 0 0 1-1.307-3.497A4.49 4.49 0 0 1 2.25 12c0-1.357.6-2.573 1.549-3.397a4.49 4.49 0 0 1 1.307-3.497 4.49 4.49 0 0 1 3.497-1.307Zm7.007 6.387a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd" />
             </svg>
           )}
         </h1>
@@ -81,8 +86,8 @@ const banner = user.banner_url || user.profile_banner_url;
         </p>
       )}
 
-      <!-- Metadata & Stats -->
-      <div class="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs font-mono text-mute pt-1">
+      <!-- Metadata & Normalized Stats Bar -->
+      <div class="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs font-mono text-mute pt-2 border-t border-hairline/60">
         {user.location && (
           <span class="flex items-center space-x-1">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-3.5 w-3.5">
@@ -93,18 +98,30 @@ const banner = user.banner_url || user.profile_banner_url;
           </span>
         )}
 
-        {user.followers_count !== undefined && (
+        <span class="flex items-center space-x-1">
+          <strong class="font-sans text-sm font-semibold text-ink tabular-nums">{formatNumber(followersCount)}</strong>
+          <span>Followers</span>
+        </span>
+
+        <span class="flex items-center space-x-1">
+          <strong class="font-sans text-sm font-semibold text-ink tabular-nums">{formatNumber(followingCount)}</strong>
+          <span>Following</span>
+        </span>
+
+        {tweetsCount > 0 && (
           <span class="flex items-center space-x-1">
-            <strong class="font-sans text-sm font-semibold text-ink tabular-nums">{formatNumber(user.followers_count)}</strong>
-            <span>Followers</span>
+            <strong class="font-sans text-sm font-semibold text-ink tabular-nums">{formatNumber(tweetsCount)}</strong>
+            <span>Tweets</span>
           </span>
         )}
 
-        {(user.following_count !== undefined || user.friends_count !== undefined) && (
-          <span class="flex items-center space-x-1">
-            <strong class="font-sans text-sm font-semibold text-ink tabular-nums">{formatNumber(user.following_count || user.friends_count)}</strong>
-            <span>Following</span>
-          </span>
+        {user.website?.display_url && (
+          <a href={user.website.url || `https://${user.website.display_url}`} target="_blank" rel="noopener noreferrer" class="flex items-center space-x-1 text-link hover:underline">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-3.5 w-3.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244" />
+            </svg>
+            <span>{user.website.display_url}</span>
+          </a>
         )}
       </div>
     </div>

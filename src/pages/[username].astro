@@ -54,10 +54,10 @@ const seo = user ? buildProfileSeo(user.screen_name, user.name, user.description
       <div class="mx-auto max-w-6xl px-4 py-8 sm:px-6">
         <div class="grid grid-cols-1 gap-8 lg:grid-cols-3">
           <!-- Tweets Column (2-cols width on desktop) -->
-          <div class="lg:col-span-2 space-y-4">
+          <div class="lg:col-span-2 space-y-6">
             <div class="flex items-center justify-between border-b border-hairline pb-3">
-              <h2 class="font-mono text-xs uppercase tracking-wider text-mute">Latest Tweets</h2>
-              <span class="font-mono text-xs text-mute">Updates Edge Cached</span>
+              <h2 class="font-mono text-xs uppercase tracking-wider text-mute">Profile Feed &amp; Tweets</h2>
+              <span class="font-mono text-xs text-emerald-400 font-medium">&bull; Edge Active</span>
             </div>
 
             {tweets && tweets.length > 0 ? (
@@ -67,9 +67,33 @@ const seo = user ? buildProfileSeo(user.screen_name, user.name, user.description
                 ))}
               </div>
             ) : (
-              <div class="rounded-lg border border-dashed border-hairline p-8 text-center bg-canvas-soft-2/40">
-                <p class="font-sans text-sm font-medium text-ink">No tweets available in current feed</p>
-                <p class="font-sans text-xs text-mute mt-1">This user may not have posted recently or tweets are protected.</p>
+              <div class="rounded-lg border border-hairline bg-canvas-soft-2/50 p-6 space-y-4">
+                <div class="flex items-center space-x-3">
+                  <div class="flex h-9 w-9 items-center justify-center rounded-full bg-canvas border border-hairline text-link">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-5 w-5">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 class="font-sans text-sm font-semibold text-ink">View any Tweet by @{user.screen_name}</h3>
+                    <p class="font-sans text-xs text-mute">Paste a tweet link or status ID to unroll the thread and download media.</p>
+                  </div>
+                </div>
+
+                <!-- Tweet Search Box for User -->
+                <form action="/" method="GET" class="relative">
+                  <div class="flex items-center space-x-2">
+                    <input
+                      type="text"
+                      name="q"
+                      placeholder={`e.g. https://x.com/${user.screen_name}/status/...`}
+                      class="w-full rounded-md border border-hairline bg-canvas px-3 py-2 text-xs text-ink placeholder-mute focus:border-hairline-strong focus:outline-none"
+                    />
+                    <button type="submit" class="rounded-md bg-ink px-4 py-2 text-xs font-medium text-on-primary hover:opacity-90 shrink-0">
+                      View Tweet
+                    </button>
+                  </div>
+                </form>
               </div>
             )}
           </div>
@@ -79,15 +103,21 @@ const seo = user ? buildProfileSeo(user.screen_name, user.name, user.description
             <!-- Static Ad Banner Placeholder in Profile Sidebar -->
             <AdBanner slotId="profile-sidebar" variant="sidebar" />
 
-            <!-- Profile Info Box -->
+            <!-- Profile Privacy & Fast Facts Box -->
             <div class="rounded-lg border border-hairline bg-canvas-soft-2 p-5 text-xs space-y-3">
-              <h3 class="font-mono uppercase text-mute tracking-wider">Privacy &amp; Data</h3>
+              <h3 class="font-mono uppercase text-mute tracking-wider">Privacy &amp; Edge Cache</h3>
               <p class="text-body leading-relaxed">
-                All data is fetched from X's public endpoints. No user tracking or cookies are applied.
+                Profile metadata is fetched directly from public endpoints. Zero tracking cookies or credentials required.
               </p>
-              <div class="pt-2 border-t border-hairline flex items-center justify-between text-mute font-mono">
-                <span>Cache TTL:</span>
-                <span class="text-ink">30 minutes</span>
+              <div class="pt-2 border-t border-hairline space-y-1 font-mono text-mute">
+                <div class="flex justify-between">
+                  <span>Cache TTL:</span>
+                  <span class="text-ink">30 minutes</span>
+                </div>
+                <div class="flex justify-between">
+                  <span>Privacy:</span>
+                  <span class="text-emerald-400">100% Anonymous</span>
+                </div>
               </div>
             </div>
           </div>

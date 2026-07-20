@@ -9,7 +9,7 @@ import SearchInput from '../../components/SearchInput.astro';
 import { fetchSyndicationTweet } from '../../lib/syndication';
 import { fetchFixTweetStatus } from '../../lib/fxtwitter';
 import { buildTweetSeo } from '../../lib/seo';
-import { formatTweetText, formatDate, formatNumber } from '../../lib/format';
+import type { FixTweetObject } from '../../lib/types';
 
 export const prerender = false;
 
@@ -19,57 +19,75 @@ if (!id || !/^\d+$/.test(id)) {
   return Astro.redirect('/');
 }
 
-// Fetch single tweet details from Syndication and FixTweet
-const [syndResult, fixResult] = await Promise.all([
-  fetchSyndicationTweet(id),
-  fetchFixTweetStatus(id),
-]);
+// 1. Dual-fetching strategy: Try Syndication first, fall back to FixTweet status API
+let normalizedTweet: FixTweetObject | null = null;
+let error: string | null = null;
 
-const tweet = syndResult.tweet;
-const fixTweet = fixResult.tweet;
-const error = syndResult.error && fixResult.error ? 'Tweet unavailable' : null;
+// Try FixTweet status API directly for rich media & thread context
+const fixRes = await fetchFixTweetStatus(id);
+if (fixRes.tweet) {
+  normalizedTweet = fixRes.tweet;
+} else {
+  // Fall back to X Syndication API
+  const syndRes = await fetchSyndicationTweet(id);
+  if (syndRes.tweet) {
+    const t = syndRes.tweet;
+    const photos = t.photos || [];
+    const videos = t.video?.variants?.filter(v => v.content_type === 'video/mp4') || [];
+    
+    normalizedTweet = {
+      id: t.id_str,
+      text: t.text,
+      created_at: t.created_at,
+      author: {
+        name: t.user.name,
+        screen_name: t.user.screen_name,
+        avatar_url: t.user.profile_image_url_https,
+      },
+      likes: t.favorite_count,
+      replies: t.conversation_count || t.reply_count,
+      retweets: t.retweet_count,
+      media: {
+        photos: photos.map(p => ({ type: 'photo' as const, url: p.media_url_https })),
+        videos: videos.map(v => ({ type: 'video' as const, url: v.url })),
+      },
+      replying_to: t.in_reply_to_status_id_str ? {
+        screen_name: t.in_reply_to_screen_name || '',
+        post_id: t.in_reply_to_status_id_str
+      } : null
+    };
+  } else {
+    error = fixRes.error || syndRes.error || 'Tweet unavailable';
+  }
+}
 
-// Extract primary media for download & SEO
-const photos = tweet?.photos || (fixTweet?.media?.photos ? fixTweet.media.photos.map(p => ({ media_url_https: p.url })) : []);
-const videos = tweet?.video?.variants?.filter(v => v.content_type === 'video/mp4') || [];
-const primaryMedia = videos.length > 0 ? videos[0].url : (photos.length > 0 ? photos[0].media_url_https : undefined);
+// 2. Fetch Parent Thread up to max depth 3
+const parentTweets: FixTweetObject[] = [];
+if (normalizedTweet && normalizedTweet.replying_to?.post_id) {
+  let currentParentId = normalizedTweet.replying_to.post_id;
+  let depth = 0;
+  
+  while (currentParentId && depth < 2) {
+    const parentRes = await fetchFixTweetStatus(currentParentId);
+    if (parentRes.tweet) {
+      parentTweets.unshift(parentRes.tweet);
+      currentParentId = parentRes.tweet.replying_to?.post_id || '';
+      depth++;
+    } else {
+      break;
+    }
+  }
+}
+
+// Extract media URL for download button & SEO
+const photos = normalizedTweet?.media?.photos || [];
+const videos = normalizedTweet?.media?.videos || [];
+const primaryMedia = videos.length > 0 ? videos[0].url : (photos.length > 0 ? photos[0].url : undefined);
 const isVideo = videos.length > 0;
 
-const seo = tweet
-  ? buildTweetSeo(id, tweet.user.name, tweet.user.screen_name, tweet.text, primaryMedia)
+const seo = normalizedTweet
+  ? buildTweetSeo(id, normalizedTweet.author.name, normalizedTweet.author.screen_name, normalizedTweet.text, primaryMedia)
   : null;
-
-// Convert syndication format to TweetCard format if needed
-const normalizedTweet = tweet ? {
-  id: tweet.id_str,
-  text: tweet.text,
-  created_at: tweet.created_at,
-  author: {
-    name: tweet.user.name,
-    screen_name: tweet.user.screen_name,
-    avatar_url: tweet.user.profile_image_url_https,
-  },
-  likes: tweet.favorite_count,
-  replies: tweet.conversation_count || tweet.reply_count,
-  retweets: tweet.retweet_count,
-  media: {
-    photos: photos.map(p => ({ url: p.media_url_https })),
-    videos: videos.map(v => ({ url: v.url })),
-  },
-} : (fixTweet ? {
-  id: fixTweet.id,
-  text: fixTweet.text,
-  created_at: fixTweet.created_at,
-  author: {
-    name: fixTweet.author.name,
-    screen_name: fixTweet.author.screen_name,
-    avatar_url: fixTweet.author.avatar_url,
-  },
-  likes: fixTweet.likes,
-  replies: fixTweet.replies,
-  retweets: fixTweet.retweets,
-  media: fixTweet.media,
-} : null);
 ---
 
 <Layout
@@ -81,16 +99,17 @@ const normalizedTweet = tweet ? {
   <div class="mx-auto max-w-4xl px-4 py-10">
     {error || !normalizedTweet ? (
       /* Tweet Error / Deleted state */
-      <div class="rounded-lg border border-hairline bg-canvas-soft-2 p-8 text-center">
+      <div class="rounded-lg border border-hairline bg-canvas-soft-2 p-8 text-center shadow-xl">
         <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-canvas border border-hairline text-warning mb-4">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-6 w-6">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
           </svg>
         </div>
         <h1 class="font-sans text-xl font-semibold text-ink mb-2">Tweet Unavailable</h1>
-        <p class="font-sans text-xs text-body mb-6">This tweet does not exist, has been deleted, or is from a protected account.</p>
+        <p class="font-sans text-xs text-body mb-6">{error || 'This tweet does not exist, has been deleted, or is from a protected account.'}</p>
 
-        <div class="pt-4 border-t border-hairline">
+        <div class="pt-4 border-t border-hairline max-w-md mx-auto">
+          <p class="font-mono text-xs text-mute mb-3">Search for another tweet or @username:</p>
           <SearchInput />
         </div>
       </div>
@@ -102,10 +121,10 @@ const normalizedTweet = tweet ? {
           <span>/</span>
           <a href={`/${normalizedTweet.author.screen_name}`} class="hover:text-ink transition-colors">@{normalizedTweet.author.screen_name}</a>
           <span>/</span>
-          <span class="text-ink">Status #{id}</span>
+          <span class="text-ink font-medium">Status #{id}</span>
         </nav>
 
-        <!-- Main Single Tweet View -->
+        <!-- Main Single Tweet Container -->
         <div class="rounded-lg border border-hairline bg-canvas-soft-2 p-6 vercel-card-glow space-y-6">
           <!-- Main Tweet Card -->
           <TweetCard tweet={normalizedTweet} />
@@ -121,7 +140,9 @@ const normalizedTweet = tweet ? {
                   filename={`tweet-${id}`}
                 />
               ) : (
-                <span class="font-mono text-xs text-mute">No direct media attached</span>
+                <span class="font-mono text-xs text-mute flex items-center space-x-1">
+                  <span>&bull; No direct downloadable media attached</span>
+                </span>
               )}
             </div>
 
@@ -149,6 +170,7 @@ const normalizedTweet = tweet ? {
 
         <!-- Thread Unroller Section (Max depth: 3) -->
         <ThreadUnroller
+          parentTweets={parentTweets}
           currentTweet={normalizedTweet}
           maxDepth={3}
         />

@@ -1,0 +1,49 @@
+---
+import TweetCard from './TweetCard.astro';
+import type { FixTweetObject } from '../lib/types';
+
+interface Props {
+  parentTweets?: FixTweetObject[];
+  currentTweet?: FixTweetObject;
+  childTweets?: FixTweetObject[];
+  maxDepth?: number;
+}
+
+const { parentTweets = [], currentTweet, childTweets = [], maxDepth = 3 } = Astro.props;
+
+// Enforce max unroll depth of 3 levels
+const parentsToRender = parentTweets.slice(-maxDepth + 1);
+const childrenToRender = childTweets.slice(0, maxDepth - 1);
+---
+
+<div class="relative w-full space-y-4">
+  <div class="flex items-center justify-between border-b border-hairline pb-2 mb-4">
+    <div class="flex items-center space-x-2">
+      <span class="h-2 w-2 rounded-full bg-cyan"></span>
+      <h3 class="font-mono text-xs uppercase tracking-wider text-mute">Thread Unroller (Depth: 3)</h3>
+    </div>
+    <span class="font-mono text-[11px] text-mute">Vertically Stacked</span>
+  </div>
+
+  <!-- Parent Tweets in thread -->
+  {parentsToRender.map((pt) => (
+    <div class="relative pl-4 border-l-2 border-hairline ml-4 pb-2">
+      <TweetCard tweet={pt} />
+    </div>
+  ))}
+
+  <!-- Main Focus Tweet -->
+  {currentTweet && (
+    <div class="relative pl-4 border-l-2 border-cyan ml-4 py-1">
+      <div class="absolute -left-[9px] top-4 h-4 w-4 rounded-full bg-cyan border-4 border-canvas"></div>
+      <TweetCard tweet={currentTweet} />
+    </div>
+  )}
+
+  <!-- Child Replies in thread -->
+  {childrenToRender.map((ct) => (
+    <div class="relative pl-4 border-l-2 border-hairline ml-4 pt-2">
+      <TweetCard tweet={ct} />
+    </div>
+  ))}
+</div>

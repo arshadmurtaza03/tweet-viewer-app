@@ -1,0 +1,102 @@
+---
+import Layout from '../layouts/Layout.astro';
+import ProfileHeader from '../components/ProfileHeader.astro';
+import TweetCard from '../components/TweetCard.astro';
+import AdBanner from '../components/AdBanner.astro';
+import SearchInput from '../components/SearchInput.astro';
+import { fetchFixTweetProfile } from '../lib/fxtwitter';
+import { buildProfileSeo } from '../lib/seo';
+
+export const prerender = false;
+
+const { username } = Astro.params;
+
+// Validate username parameter
+if (!username || !/^[a-zA-Z0-9_]{1,15}$/.test(username)) {
+  return Astro.redirect('/');
+}
+
+const { user, tweets, error } = await fetchFixTweetProfile(username);
+const seo = user ? buildProfileSeo(user.screen_name, user.name, user.description, user.avatar_url) : null;
+---
+
+<Layout
+  title={seo?.title || `@${username} — My Tweet Viewer`}
+  description={seo?.description || `View @${username}'s tweets anonymously.`}
+  canonicalUrl={seo?.canonicalUrl}
+  ogImage={seo?.ogImage}
+>
+  {error || !user ? (
+    <!-- Error / Profile Not Found State -->
+    <div class="mx-auto max-w-2xl px-4 py-20 text-center">
+      <div class="rounded-lg border border-hairline bg-canvas-soft-2 p-8 shadow-sm">
+        <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-canvas border border-hairline text-warning mb-4">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-6 w-6">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+          </svg>
+        </div>
+        <h1 class="font-sans text-xl font-semibold text-ink mb-2">Profile Unavailable</h1>
+        <p class="font-sans text-xs text-body mb-6">{error || `User @${username} could not be found or account is restricted.`}</p>
+
+        <div class="pt-2 border-t border-hairline">
+          <p class="font-mono text-xs text-mute mb-4">Try searching for another user or link:</p>
+          <SearchInput />
+        </div>
+      </div>
+    </div>
+  ) : (
+    <!-- Active Profile Layout -->
+    <div>
+      <!-- Profile Header Component -->
+      <ProfileHeader user={user} />
+
+      <!-- Timeline Main Grid -->
+      <div class="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+        <div class="grid grid-cols-1 gap-8 lg:grid-cols-3">
+          <!-- Tweets Column (2-cols width on desktop) -->
+          <div class="lg:col-span-2 space-y-4">
+            <div class="flex items-center justify-between border-b border-hairline pb-3">
+              <h2 class="font-mono text-xs uppercase tracking-wider text-mute">Latest Tweets</h2>
+              <span class="font-mono text-xs text-mute">Updates Edge Cached</span>
+            </div>
+
+            {tweets && tweets.length > 0 ? (
+              <div class="space-y-4">
+                {tweets.map((tweet) => (
+                  <TweetCard tweet={tweet} />
+                ))}
+              </div>
+            ) : (
+              <div class="rounded-lg border border-dashed border-hairline p-8 text-center bg-canvas-soft-2/40">
+                <p class="font-sans text-sm font-medium text-ink">No tweets available in current feed</p>
+                <p class="font-sans text-xs text-mute mt-1">This user may not have posted recently or tweets are protected.</p>
+              </div>
+            )}
+          </div>
+
+          <!-- Sidebar Column (1-col width on desktop) -->
+          <div class="space-y-6">
+            <!-- Static Ad Banner Placeholder in Profile Sidebar -->
+            <AdBanner slotId="profile-sidebar" variant="sidebar" />
+
+            <!-- Profile Info Box -->
+            <div class="rounded-lg border border-hairline bg-canvas-soft-2 p-5 text-xs space-y-3">
+              <h3 class="font-mono uppercase text-mute tracking-wider">Privacy &amp; Data</h3>
+              <p class="text-body leading-relaxed">
+                All data is fetched from X's public endpoints. No user tracking or cookies are applied.
+              </p>
+              <div class="pt-2 border-t border-hairline flex items-center justify-between text-mute font-mono">
+                <span>Cache TTL:</span>
+                <span class="text-ink">30 minutes</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )}
+
+  {seo?.jsonLd && (
+    <script type="application/ld+json" set:html={JSON.stringify(seo.jsonLd)} />
+  )}
+</Layout>

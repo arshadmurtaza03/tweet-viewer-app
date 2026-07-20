@@ -27,7 +27,7 @@ const seo = user ? buildProfileSeo(user.screen_name, user.name, user.description
   ogImage={seo?.ogImage}
 >
   {error || !user ? (
-    <!-- Error / Profile Not Found State -->
+    /* Error / Profile Not Found State */
     <div class="mx-auto max-w-2xl px-4 py-20 text-center">
       <div class="rounded-lg border border-hairline bg-canvas-soft-2 p-8 shadow-sm">
         <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-canvas border border-hairline text-warning mb-4">
@@ -45,7 +45,7 @@ const seo = user ? buildProfileSeo(user.screen_name, user.name, user.description
       </div>
     </div>
   ) : (
-    <!-- Active Profile Layout -->
+    /* Active Profile Layout */
     <div>
       <!-- Profile Header Component -->
       <ProfileHeader user={user} />

@@ -34,7 +34,7 @@ const videos = tweet.media?.videos || [];
 const hasMedia = photos.length > 0 || videos.length > 0;
 ---
 
-<article class="group relative rounded-lg border border-hairline bg-canvas-soft-2/50 p-4 transition-all duration-200 hover:border-hairline-strong vercel-card-glow">
+<article class="group relative rounded-lg border border-hairline bg-canvas-soft-2/50 p-4 transition-all duration-200 hover:border-hairline-strong vercel-card-glow" data-tweet-id={tweet.id}>
   <!-- Header: Avatar + User details + Timestamp -->
   <div class="flex items-start justify-between space-x-3 mb-3">
     <div class="flex items-center space-x-3 min-w-0">
@@ -43,6 +43,7 @@ const hasMedia = photos.length > 0 || videos.length > 0;
           src={avatar}
           alt={tweet.author.name}
           loading="lazy"
+          referrerpolicy="no-referrer"
           class="h-10 w-10 rounded-full border border-hairline bg-canvas object-cover shadow-sm"
         />
       </a>
@@ -80,6 +81,7 @@ const hasMedia = photos.length > 0 || videos.length > 0;
             src={photos[0].url} 
             alt="Tweet image" 
             loading="lazy"
+            referrerpolicy="no-referrer"
             class="tweet-lightbox-img tweet-media-img w-full h-auto max-h-[512px] object-cover cursor-zoom-in transition-transform duration-300 hover:scale-[1.02]"
             data-full-img={photos[0].url}
           />
@@ -97,6 +99,7 @@ const hasMedia = photos.length > 0 || videos.length > 0;
                 src={p.url} 
                 alt={`Tweet photo ${idx + 1}`} 
                 loading="lazy"
+                referrerpolicy="no-referrer"
                 class="tweet-lightbox-img tweet-media-img h-full w-full object-cover cursor-zoom-in transition-transform duration-300 hover:scale-105"
                 data-full-img={p.url}
               />
@@ -112,6 +115,7 @@ const hasMedia = photos.length > 0 || videos.length > 0;
               src={photos[0].url} 
               alt="Tweet photo 1" 
               loading="lazy"
+              referrerpolicy="no-referrer"
               class="tweet-lightbox-img tweet-media-img h-full w-full object-cover cursor-zoom-in transition-transform duration-300 hover:scale-105"
               data-full-img={photos[0].url}
             />
@@ -123,6 +127,7 @@ const hasMedia = photos.length > 0 || videos.length > 0;
                   src={p.url} 
                   alt={`Tweet photo ${idx + 2}`} 
                   loading="lazy"
+                  referrerpolicy="no-referrer"
                   class="tweet-lightbox-img tweet-media-img h-full w-full object-cover cursor-zoom-in transition-transform duration-300 hover:scale-105"
                   data-full-img={p.url}
                 />
@@ -140,6 +145,7 @@ const hasMedia = photos.length > 0 || videos.length > 0;
                 src={p.url} 
                 alt={`Tweet photo ${idx + 1}`} 
                 loading="lazy"
+                referrerpolicy="no-referrer"
                 class="tweet-lightbox-img tweet-media-img h-full w-full object-cover cursor-zoom-in transition-transform duration-300 hover:scale-105"
                 data-full-img={p.url}
               />
@@ -153,27 +159,33 @@ const hasMedia = photos.length > 0 || videos.length > 0;
   <!-- Embedded MP4 Videos / HLS Streams / GIFs Rendering -->
   {videos.length > 0 && (
     <div class="mb-4 rounded-lg overflow-hidden border border-hairline bg-black relative group/vid">
-      {videos.map((vid) => (
-        <div class="relative">
-          <video 
-            controls 
-            preload="metadata"
-            poster={vid.thumbnail_url}
-            class="tweet-video w-full max-h-[480px] object-contain bg-black"
-            data-hls-src={vid.hls_url || undefined}
-          >
-            <source src={vid.url} type="video/mp4" />
-            Your browser does not support HTML5 MP4 video playback.
-          </video>
-          <div class="p-2 bg-canvas-soft-2 border-t border-hairline flex items-center justify-between">
-            <span class="font-mono text-[11px] text-mute flex items-center space-x-1">
-              <span class="h-2 w-2 rounded-full bg-cyan"></span>
-              <span data-i18n="mp4_stream">Direct MP4 Video Stream</span>
-            </span>
-            <MediaDownloadButton mediaUrl={vid.url} mediaType="video" filename={`video-${tweet.id}`} />
+      {videos.map((vid) => {
+        const proxyVideoUrl = `/api/video-proxy?url=${encodeURIComponent(vid.url)}`;
+        return (
+          <div class="relative">
+            <video 
+              controls 
+              playsinline
+              preload="metadata"
+              poster={vid.thumbnail_url}
+              referrerpolicy="no-referrer"
+              class="tweet-video w-full max-h-[480px] object-contain bg-black"
+              data-hls-src={vid.hls_url || undefined}
+            >
+              <source src={proxyVideoUrl} type="video/mp4" />
+              <source src={vid.url} type="video/mp4" />
+              Your browser does not support HTML5 MP4 video playback.
+            </video>
+            <div class="p-2 bg-canvas-soft-2 border-t border-hairline flex items-center justify-between">
+              <span class="font-mono text-[11px] text-mute flex items-center space-x-1">
+                <span class="h-2 w-2 rounded-full bg-cyan"></span>
+                <span data-i18n="mp4_stream">Direct MP4 Video Stream</span>
+              </span>
+              <MediaDownloadButton mediaUrl={vid.url} mediaType="video" filename={`video-${tweet.id}`} />
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   )}
 
@@ -224,7 +236,6 @@ const hasMedia = photos.length > 0 || videos.length > 0;
 
 <!-- Global Lightbox Modal + HLS Player + Error Fallback Initialization -->
 <script>
-  // Graceful error fallback for broken/expired images
   function setupMediaFallbacks() {
     const images = document.querySelectorAll('.tweet-media-img');
     images.forEach((img) => {
@@ -239,7 +250,6 @@ const hasMedia = photos.length > 0 || videos.length > 0;
     });
   }
 
-  // Lightbox with keyboard controls
   function setupLightboxes() {
     const images = document.querySelectorAll('.tweet-lightbox-img');
 
@@ -256,7 +266,7 @@ const hasMedia = photos.length > 0 || videos.length > 0;
         modal.style.animation = 'fadeIn 0.2s ease';
         modal.innerHTML = `
           <div class="relative max-w-5xl max-h-[90vh] overflow-hidden rounded-lg">
-            <img src="${fullSrc}" class="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl" alt="Enlarged tweet image" />
+            <img src="${fullSrc}" referrerpolicy="no-referrer" class="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl" alt="Enlarged tweet image" />
             <button type="button" class="absolute top-2 right-2 rounded-full bg-black/70 p-2 text-white hover:bg-black transition-colors" title="Close (Esc)">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="h-5 w-5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -283,7 +293,6 @@ const hasMedia = photos.length > 0 || videos.length > 0;
     });
   }
 
-  // HLS.js lazy loader for .m3u8 streams
   function setupHLSPlayers() {
     const videos = document.querySelectorAll<HTMLVideoElement>('video.tweet-video[data-hls-src]');
     if (videos.length === 0) return;
@@ -295,13 +304,11 @@ const hasMedia = photos.length > 0 || videos.length > 0;
       const hlsSrc = video.dataset.hlsSrc;
       if (!hlsSrc) return;
 
-      // Check if native HLS is supported (Safari)
       if (video.canPlayType('application/vnd.apple.mpegurl')) {
         video.src = hlsSrc;
         return;
       }
 
-      // Lazy-load hls.js from CDN on first play
       const loadHls = () => {
         if ((window as any).Hls) {
           initHls(video, hlsSrc);
@@ -311,7 +318,7 @@ const hasMedia = photos.length > 0 || videos.length > 0;
         script.src = 'https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js';
         script.onload = () => initHls(video, hlsSrc);
         script.onerror = () => {
-          console.warn('HLS.js failed to load, falling back to MP4');
+          console.warn('HLS.js failed to load, falling back to MP4 proxy');
         };
         document.head.appendChild(script);
       };
@@ -332,13 +339,12 @@ const hasMedia = photos.length > 0 || videos.length > 0;
     });
     hls.on(Hls.Events.ERROR, (_: any, data: any) => {
       if (data.fatal) {
-        console.warn('HLS fatal error, falling back to MP4');
+        console.warn('HLS fatal error, falling back to MP4 proxy');
         hls.destroy();
       }
     });
   }
 
-  // Make globally accessible for dynamic Load More
   (window as any).__setupLightboxes = () => {
     setupLightboxes();
     setupMediaFallbacks();

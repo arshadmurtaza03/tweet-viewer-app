@@ -184,6 +184,14 @@ const initialTweetsCount = tweets?.length || 0;
     let lastFetchTime = 0;
     const THROTTLE_MS = 2000;
 
+    // Track all rendered tweet IDs to eliminate duplicate page 1 repeats
+    const seenTweetIds = new Set<string>();
+    const existingCards = container.querySelectorAll('[data-tweet-id]');
+    existingCards.forEach((c) => {
+      const tid = c.getAttribute('data-tweet-id');
+      if (tid) seenTweetIds.add(tid);
+    });
+
     function formatNumber(num?: number): string {
       if (!num) return '0';
       if (num >= 1000000) return (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
@@ -239,7 +247,7 @@ const initialTweetsCount = tweets?.length || 0;
       if (photos.length === 1) {
         mediaHtml = `<div class="mb-4 rounded-lg overflow-hidden border border-hairline bg-canvas relative group/media">
           <div class="relative overflow-hidden bg-black/40">
-            <img src="${photos[0].url}" alt="Tweet image" loading="lazy" class="tweet-lightbox-img tweet-media-img w-full h-auto max-h-[512px] object-cover cursor-zoom-in transition-transform duration-300 hover:scale-[1.02]" data-full-img="${photos[0].url}"/>
+            <img src="${photos[0].url}" alt="Tweet image" loading="lazy" referrerpolicy="no-referrer" class="tweet-lightbox-img tweet-media-img w-full h-auto max-h-[512px] object-cover cursor-zoom-in transition-transform duration-300 hover:scale-[1.02]" data-full-img="${photos[0].url}"/>
             <div class="absolute bottom-2 right-2 opacity-0 group-hover/media:opacity-100 transition-opacity">
               <a href="${photos[0].url}" target="_blank" download class="inline-flex items-center space-x-1 rounded bg-black/80 px-2.5 py-1 text-[11px] font-mono text-white backdrop-blur-md hover:bg-black">
                 <span>Download</span>
@@ -250,47 +258,51 @@ const initialTweetsCount = tweets?.length || 0;
       } else if (photos.length === 2) {
         mediaHtml = `<div class="mb-4 rounded-lg overflow-hidden border border-hairline bg-canvas relative group/media">
           <div class="grid grid-cols-2 gap-0.5 bg-black/40">
-            ${photos.map((p: any, idx: number) => `<div class="relative overflow-hidden h-64"><img src="${p.url}" alt="Photo ${idx+1}" loading="lazy" class="tweet-lightbox-img tweet-media-img h-full w-full object-cover cursor-zoom-in transition-transform duration-300 hover:scale-105" data-full-img="${p.url}"/></div>`).join('')}
+            ${photos.map((p: any, idx: number) => `<div class="relative overflow-hidden h-64"><img src="${p.url}" alt="Photo ${idx+1}" loading="lazy" referrerpolicy="no-referrer" class="tweet-lightbox-img tweet-media-img h-full w-full object-cover cursor-zoom-in transition-transform duration-300 hover:scale-105" data-full-img="${p.url}"/></div>`).join('')}
           </div>
         </div>`;
       } else if (photos.length === 3) {
         mediaHtml = `<div class="mb-4 rounded-lg overflow-hidden border border-hairline bg-canvas relative group/media">
           <div class="grid grid-cols-3 gap-0.5 bg-black/40 h-72">
-            <div class="col-span-2 relative overflow-hidden h-full"><img src="${photos[0].url}" alt="Photo 1" loading="lazy" class="tweet-lightbox-img tweet-media-img h-full w-full object-cover cursor-zoom-in transition-transform duration-300 hover:scale-105" data-full-img="${photos[0].url}"/></div>
+            <div class="col-span-2 relative overflow-hidden h-full"><img src="${photos[0].url}" alt="Photo 1" loading="lazy" referrerpolicy="no-referrer" class="tweet-lightbox-img tweet-media-img h-full w-full object-cover cursor-zoom-in transition-transform duration-300 hover:scale-105" data-full-img="${photos[0].url}"/></div>
             <div class="col-span-1 grid grid-rows-2 gap-0.5 h-full">
-              ${photos.slice(1).map((p: any, idx: number) => `<div class="relative overflow-hidden h-full"><img src="${p.url}" alt="Photo ${idx+2}" loading="lazy" class="tweet-lightbox-img tweet-media-img h-full w-full object-cover cursor-zoom-in transition-transform duration-300 hover:scale-105" data-full-img="${p.url}"/></div>`).join('')}
+              ${photos.slice(1).map((p: any, idx: number) => `<div class="relative overflow-hidden h-full"><img src="${p.url}" alt="Photo ${idx+2}" loading="lazy" referrerpolicy="no-referrer" class="tweet-lightbox-img tweet-media-img h-full w-full object-cover cursor-zoom-in transition-transform duration-300 hover:scale-105" data-full-img="${p.url}"/></div>`).join('')}
             </div>
           </div>
         </div>`;
       } else if (photos.length >= 4) {
         mediaHtml = `<div class="mb-4 rounded-lg overflow-hidden border border-hairline bg-canvas relative group/media">
           <div class="grid grid-cols-2 gap-0.5 bg-black/40 h-72">
-            ${photos.slice(0, 4).map((p: any, idx: number) => `<div class="relative overflow-hidden h-full"><img src="${p.url}" alt="Photo ${idx+1}" loading="lazy" class="tweet-lightbox-img tweet-media-img h-full w-full object-cover cursor-zoom-in transition-transform duration-300 hover:scale-105" data-full-img="${p.url}"/></div>`).join('')}
+            ${photos.slice(0, 4).map((p: any, idx: number) => `<div class="relative overflow-hidden h-full"><img src="${p.url}" alt="Photo ${idx+1}" loading="lazy" referrerpolicy="no-referrer" class="tweet-lightbox-img tweet-media-img h-full w-full object-cover cursor-zoom-in transition-transform duration-300 hover:scale-105" data-full-img="${p.url}"/></div>`).join('')}
           </div>
         </div>`;
       }
 
-      // Videos
+      // Videos (routed through /api/video-proxy?url=... with referrerpolicy="no-referrer")
       if (videos.length > 0) {
-        mediaHtml += videos.map((v: any) => `<div class="mb-4 rounded-lg overflow-hidden border border-hairline bg-black relative group/vid">
-          <div class="relative">
-            <video controls preload="metadata" poster="${v.thumbnail_url || ''}" class="tweet-video w-full max-h-[480px] object-contain bg-black" ${v.hls_url ? `data-hls-src="${v.hls_url}"` : ''}>
-              <source src="${v.url}" type="video/mp4"/>
-              Your browser does not support MP4 video playback.
-            </video>
-            <div class="p-2 bg-canvas-soft-2 border-t border-hairline flex items-center justify-between">
-              <span class="font-mono text-[11px] text-mute flex items-center space-x-1"><span class="h-2 w-2 rounded-full bg-cyan"></span><span>Direct MP4 Video Stream</span></span>
-              <a href="${v.url}" target="_blank" download class="inline-flex items-center space-x-1 rounded bg-black/80 px-2.5 py-1 text-[11px] font-mono text-white hover:bg-black"><span>Download MP4</span></a>
+        mediaHtml += videos.map((v: any) => {
+          const proxyUrl = `/api/video-proxy?url=${encodeURIComponent(v.url)}`;
+          return `<div class="mb-4 rounded-lg overflow-hidden border border-hairline bg-black relative group/vid">
+            <div class="relative">
+              <video controls playsinline preload="metadata" poster="${v.thumbnail_url || ''}" referrerpolicy="no-referrer" class="tweet-video w-full max-h-[480px] object-contain bg-black" ${v.hls_url ? `data-hls-src="${v.hls_url}"` : ''}>
+                <source src="${proxyUrl}" type="video/mp4"/>
+                <source src="${v.url}" type="video/mp4"/>
+                Your browser does not support MP4 video playback.
+              </video>
+              <div class="p-2 bg-canvas-soft-2 border-t border-hairline flex items-center justify-between">
+                <span class="font-mono text-[11px] text-mute flex items-center space-x-1"><span class="h-2 w-2 rounded-full bg-cyan"></span><span>Direct MP4 Video Stream</span></span>
+                <a href="${v.url}" target="_blank" download class="inline-flex items-center space-x-1 rounded bg-black/80 px-2.5 py-1 text-[11px] font-mono text-white hover:bg-black"><span>Download MP4</span></a>
+              </div>
             </div>
-          </div>
-        </div>`).join('');
+          </div>`;
+        }).join('');
       }
 
-      return `<article class="group relative rounded-lg border border-hairline bg-canvas-soft-2/50 p-4 transition-all duration-200 hover:border-hairline-strong vercel-card-glow">
+      return `<article class="group relative rounded-lg border border-hairline bg-canvas-soft-2/50 p-4 transition-all duration-200 hover:border-hairline-strong vercel-card-glow" data-tweet-id="${t.id}">
         <div class="flex items-start justify-between space-x-3 mb-3">
           <div class="flex items-center space-x-3 min-w-0">
             <a href="/${handle}" class="shrink-0 transition-opacity hover:opacity-80">
-              <img src="${avatar}" alt="${name}" loading="lazy" class="h-10 w-10 rounded-full border border-hairline bg-canvas object-cover shadow-sm"/>
+              <img src="${avatar}" alt="${name}" loading="lazy" referrerpolicy="no-referrer" class="h-10 w-10 rounded-full border border-hairline bg-canvas object-cover shadow-sm"/>
             </a>
             <div class="min-w-0 flex-1">
               <a href="/${handle}" class="truncate font-sans text-sm font-semibold text-ink hover:underline block">${name}</a>
@@ -320,7 +332,6 @@ const initialTweetsCount = tweets?.length || 0;
       </article>`;
     }
 
-    // Client-side fetch via local /api/syndication gateway (bypasses browser CORS & server 429)
     async function fetchTimelineFromGateway(cursor?: string): Promise<{ tweets: any[]; bottom_cursor?: string }> {
       let endpointUrl = `/api/syndication?username=${encodeURIComponent(username)}`;
       if (cursor) {
@@ -336,7 +347,7 @@ const initialTweetsCount = tweets?.length || 0;
     const ssrHasMedia = container.dataset.ssrHasMedia === 'true';
     const initialCount = container.children.length;
 
-    // Always fetch hydrated tweets from API gateway if SSR tweets lack media
+    // Sourcing timeline & media on initial load
     if (initialCount === 0 || !ssrHasMedia) {
       if (spinner) spinner.classList.remove('hidden');
       
@@ -345,7 +356,10 @@ const initialTweetsCount = tweets?.length || 0;
           if (spinner) spinner.classList.add('hidden');
           if (tweets.length > 0) {
             container.innerHTML = '';
+            seenTweetIds.clear();
             for (const t of tweets) {
+              if (seenTweetIds.has(t.id)) continue;
+              seenTweetIds.add(t.id);
               container.insertAdjacentHTML('beforeend', buildTweetCardHtml(t));
             }
             if (bottom_cursor) {
@@ -366,7 +380,7 @@ const initialTweetsCount = tweets?.length || 0;
         });
     }
 
-    // Load More click handler
+    // Load More click handler (with deduplication & max_id calculation)
     loadMoreBtn.addEventListener('click', async () => {
       if (isLoading) return;
 
@@ -394,17 +408,21 @@ const initialTweetsCount = tweets?.length || 0;
       if (loadMoreText) loadMoreText.textContent = 'Loading…';
 
       try {
-        const { tweets: newTweets, bottom_cursor: newCursor } = await fetchTimelineFromGateway(currentCursor);
+        const { tweets: fetchedTweets, bottom_cursor: newCursor } = await fetchTimelineFromGateway(currentCursor);
         lastFetchTime = Date.now();
 
-        if (newTweets.length === 0) {
+        // Filter out any tweets that are ALREADY in seenTweetIds
+        const freshTweets = fetchedTweets.filter((t) => !seenTweetIds.has(t.id));
+
+        if (freshTweets.length === 0) {
           if (loadMoreText) loadMoreText.textContent = 'No more tweets to load';
           loadMoreBtn.disabled = true;
           loadMoreBtn.classList.add('opacity-50', 'cursor-not-allowed');
           return;
         }
 
-        for (const t of newTweets) {
+        for (const t of freshTweets) {
+          seenTweetIds.add(t.id);
           container.insertAdjacentHTML('beforeend', buildTweetCardHtml(t));
         }
 
@@ -415,9 +433,19 @@ const initialTweetsCount = tweets?.length || 0;
           loadMoreBtn.disabled = false;
           loadMoreBtn.classList.remove('opacity-50');
         } else {
-          if (loadMoreText) loadMoreText.textContent = 'No more tweets to load';
-          loadMoreBtn.disabled = true;
-          loadMoreBtn.classList.add('opacity-50', 'cursor-not-allowed');
+          // If no cursor was returned, derive max_id cursor from the oldest tweet
+          const oldestId = freshTweets[freshTweets.length - 1].id;
+          try {
+            currentCursor = (BigInt(oldestId) - 1n).toString();
+            loadMoreBtn.dataset.cursor = currentCursor;
+            if (loadMoreText) loadMoreText.textContent = 'Load More Tweets';
+            loadMoreBtn.disabled = false;
+            loadMoreBtn.classList.remove('opacity-50');
+          } catch {
+            if (loadMoreText) loadMoreText.textContent = 'No more tweets to load';
+            loadMoreBtn.disabled = true;
+            loadMoreBtn.classList.add('opacity-50', 'cursor-not-allowed');
+          }
         }
 
         if (typeof (window as any).__setupLightboxes === 'function') {

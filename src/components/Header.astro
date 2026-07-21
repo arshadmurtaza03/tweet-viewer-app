@@ -17,38 +17,8 @@ import LanguageSelector from './LanguageSelector.astro';
       </span>
     </a>
 
-    <!-- Quick Search in Header (Desktop) -->
-    <div class="hidden md:flex items-center">
-      <form action="/" method="GET" class="relative w-64">
-        <input
-          type="text"
-          name="q"
-          data-i18n-placeholder="search_placeholder"
-          placeholder="Search @username…"
-          spellcheck="false"
-          autocomplete="off"
-          class="w-full h-8 rounded-sm border border-hairline bg-canvas-soft-2 px-3 pl-8 text-xs text-ink placeholder-mute transition-all focus:border-hairline-strong focus:outline-none focus:ring-1 focus:ring-ink"
-        />
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="absolute left-2.5 top-2 h-4 w-4 text-mute">
-          <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-        </svg>
-      </form>
-    </div>
-
-    <!-- Navigation links, Theme Toggle, Language Selector & Mobile Search Toggle -->
-    <nav class="flex items-center space-x-1.5 sm:space-x-2 text-xs">
-      <!-- Mobile Search Button -->
-      <button
-        id="mobile-search-toggle"
-        type="button"
-        aria-label="Toggle mobile search"
-        class="md:hidden rounded-md p-1.5 text-mute hover:bg-canvas-soft-2 hover:text-ink transition-colors"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-5 w-5">
-          <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-        </svg>
-      </button>
-
+    <!-- Navigation links, Theme Toggle & Language Selector -->
+    <nav class="flex items-center space-x-2 sm:space-x-3 text-xs">
       <a href="/" class="px-2 py-1 font-medium text-body transition-colors hover:text-ink" data-i18n="nav_home">
         Home
       </a>
@@ -68,36 +38,4 @@ import LanguageSelector from './LanguageSelector.astro';
       </span>
     </nav>
   </div>
-
-  <!-- Mobile Dropdown Search Input -->
-  <div id="mobile-search-bar" class="hidden md:hidden border-t border-hairline bg-canvas-soft-2 px-4 py-3">
-    <form action="/" method="GET" class="relative flex items-center space-x-2">
-      <input
-        type="text"
-        name="q"
-        data-i18n-placeholder="search_placeholder_long"
-        placeholder="Search @username or paste tweet URL…"
-        spellcheck="false"
-        autocomplete="off"
-        class="w-full h-9 rounded-md border border-hairline bg-canvas px-3 text-xs text-ink placeholder-mute focus:border-hairline-strong focus:outline-none"
-      />
-      <button type="submit" class="rounded-md bg-ink px-3 py-2 text-xs font-medium text-on-primary shrink-0" data-i18n="search_button">
-        Search
-      </button>
-    </form>
-  </div>
 </header>
-
-<script>
-  function setupMobileSearch() {
-    const btn = document.getElementById('mobile-search-toggle');
-    const bar = document.getElementById('mobile-search-bar');
-    if (btn && bar) {
-      btn.onclick = () => {
-        bar.classList.toggle('hidden');
-      };
-    }
-  }
-  setupMobileSearch();
-  document.addEventListener('astro:page-load', setupMobileSearch);
-</script>

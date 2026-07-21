@@ -157,7 +157,7 @@ export async function fetchSyndicationTweet(tweetId: string): Promise<{ tweet?: 
 }
 
 /**
- * Fetch a paginated timeline from Twitter Syndication.
+ * Fetch a paginated timeline from Twitter Syndication with proxy rotation fallback.
  */
 export async function fetchSyndicationTimeline(
   username: string,
@@ -168,32 +168,65 @@ export async function fetchSyndicationTimeline(
     return { tweets: [], error: 'Invalid username format' };
   }
 
+  let targetUrl = `https://syndication.twitter.com/srv/timeline-profile/screen-name/${cleanUser}`;
+  if (cursor) {
+    targetUrl += `?cursor=${encodeURIComponent(cursor)}`;
+  }
+
+  const guestId = `v1%3A${Date.now()}${Math.floor(Math.random() * 1000000000)}`;
+  let html = '';
+
+  // 1. Direct fetch with guest cookie
   try {
-    let url = `https://syndication.twitter.com/srv/timeline-profile/screen-name/${cleanUser}`;
-    if (cursor) {
-      url += `?cursor=${encodeURIComponent(cursor)}`;
-    }
-
-    const guestId = `v1%3A${Date.now()}${Math.floor(Math.random() * 1000000000)}`;
-
-    const timelineRes = await fetch(url, {
+    const timelineRes = await fetch(targetUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.9',
         'Cookie': `guest_id=${guestId}; guest_id_marketing=${guestId}; guest_id_ads=${guestId}`,
         'Referer': 'https://platform.twitter.com/',
       },
     });
 
-    if (!timelineRes.ok) {
-      return { tweets: [], error: `Syndication timeline error (${timelineRes.status})` };
+    if (timelineRes.ok) {
+      html = await timelineRes.text();
     }
-
-    const html = await timelineRes.text();
-    return parseSyndicationHtml(html, cleanUser);
-  } catch (e: any) {
-    console.error('fetchSyndicationTimeline error:', e);
-    return { tweets: [], error: 'Failed to fetch timeline from Syndication' };
+  } catch (directErr) {
+    // Direct fetch failed
   }
+
+  // 2. Proxy Fallback 1: codetabs proxy
+  if (!html || !html.includes('__NEXT_DATA__')) {
+    try {
+      const proxyRes = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}`, {
+        signal: AbortSignal.timeout(6000),
+      });
+      if (proxyRes.ok) {
+        const text = await proxyRes.text();
+        if (text.includes('__NEXT_DATA__')) {
+          html = text;
+        }
+      }
+    } catch (pErr) {}
+  }
+
+  // 3. Proxy Fallback 2: allorigins proxy
+  if (!html || !html.includes('__NEXT_DATA__')) {
+    try {
+      const proxyRes2 = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`, {
+        signal: AbortSignal.timeout(6000),
+      });
+      if (proxyRes2.ok) {
+        const text = await proxyRes2.text();
+        if (text.includes('__NEXT_DATA__')) {
+          html = text;
+        }
+      }
+    } catch (pErr2) {}
+  }
+
+  if (html && html.includes('__NEXT_DATA__')) {
+    return parseSyndicationHtml(html, cleanUser);
+  }
+
+  return { tweets: [], error: 'Failed to fetch timeline from Syndication network' };
 }

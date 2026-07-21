@@ -25,7 +25,6 @@ if (error || !user) {
   Astro.response.headers.set('Cache-Control', 'public, max-age=1800, stale-while-revalidate=300');
 }
 
-// Check if any SSR tweets have media
 const ssrHasMedia = tweets?.some(t => (t.media?.photos && t.media.photos.length > 0) || (t.media?.videos && t.media.videos.length > 0)) || false;
 const initialTweetsCount = tweets?.length || 0;
 ---
@@ -321,110 +320,30 @@ const initialTweetsCount = tweets?.length || 0;
       </article>`;
     }
 
-    // Direct browser timeline sourcing with guest_id cookie
-    async function fetchClientSideTimeline(cursor?: string): Promise<{ tweets: any[]; bottom_cursor?: string }> {
-      let targetUrl = `https://syndication.twitter.com/srv/timeline-profile/screen-name/${username}`;
+    // Client-side fetch via local /api/syndication gateway (bypasses browser CORS & server 429)
+    async function fetchTimelineFromGateway(cursor?: string): Promise<{ tweets: any[]; bottom_cursor?: string }> {
+      let endpointUrl = `/api/syndication?username=${encodeURIComponent(username)}`;
       if (cursor) {
-        targetUrl += `?cursor=${encodeURIComponent(cursor)}`;
+        endpointUrl += `&cursor=${encodeURIComponent(cursor)}`;
       }
 
-      const guestId = `v1%3A${Date.now()}${Math.floor(Math.random() * 1000000000)}`;
-
-      const res = await fetch(targetUrl, {
-        headers: {
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-          'Cookie': `guest_id=${guestId}; guest_id_marketing=${guestId}; guest_id_ads=${guestId}`,
-        }
-      });
-
+      const res = await fetch(endpointUrl);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const html = await res.text();
-      const marker = '<script id="__NEXT_DATA__" type="application/json">';
-      const startIndex = html.indexOf(marker);
-      if (startIndex === -1) throw new Error('Timeline script not found');
-
-      const jsonStart = startIndex + marker.length;
-      const jsonEnd = html.indexOf('</' + 'script>', jsonStart);
-      const jsonStr = html.substring(jsonStart, jsonEnd);
-      const timelineData = JSON.parse(jsonStr);
-      const entries = timelineData.props?.pageProps?.timeline?.entries || [];
-
-      const parsedTweets: any[] = [];
-      let bCursor: string | undefined;
-
-      for (const entry of entries) {
-        if (entry.type === 'cursor') {
-          const val = entry.content?.value || entry.content?.cursor?.value;
-          if (entry.entryId?.includes('bottom') || entry.content?.cursorType === 'Bottom') {
-            bCursor = val;
-          }
-        }
-
-        if (entry.type === 'tweet' && entry.content?.tweet) {
-          const t = entry.content.tweet;
-          const mediaDetails = t.mediaDetails || [];
-          
-          const photos = mediaDetails
-            .filter((m: any) => m.type === 'photo')
-            .map((m: any) => ({ url: m.media_url_https }));
-
-          const videos = mediaDetails
-            .filter((m: any) => m.type === 'video' || m.type === 'animated_gif')
-            .map((m: any) => {
-              const mp4s = m.video_info?.variants?.filter((v: any) => v.content_type === 'video/mp4') || [];
-              const bestVideo = mp4s.sort((a: any, b: any) => (b.bitrate || 0) - (a.bitrate || 0))[0];
-              const hlsVariants = m.video_info?.variants?.filter((v: any) => v.content_type === 'application/x-mpegURL') || [];
-              return {
-                url: bestVideo?.url || m.media_url_https,
-                thumbnail_url: m.media_url_https,
-                hls_url: hlsVariants[0]?.url || undefined,
-              };
-            });
-
-          parsedTweets.push({
-            id: t.id_str,
-            text: t.full_text || t.text || '',
-            created_at: t.created_at,
-            author: {
-              name: t.user?.name || username,
-              screen_name: t.user?.screen_name || username,
-              avatar_url: t.user?.profile_image_url_https,
-            },
-            likes: t.favorite_count || 0,
-            retweets: t.retweet_count || 0,
-            replies: t.reply_count || t.conversation_count || 0,
-            media: {
-              photos: photos.length > 0 ? photos : undefined,
-              videos: videos.length > 0 ? videos : undefined,
-            },
-          });
-        }
-      }
-
-      if (!bCursor && parsedTweets.length > 0) {
-        const lastId = parsedTweets[parsedTweets.length - 1].id;
-        try {
-          bCursor = (BigInt(lastId) - 1n).toString();
-        } catch {
-          bCursor = lastId;
-        }
-      }
-
-      return { tweets: parsedTweets, bottom_cursor: bCursor };
+      const data = await res.json();
+      return { tweets: data.tweets || [], bottom_cursor: data.bottom_cursor };
     }
 
-    // ALWAYS perform client-side browser fetch if SSR tweets lack media
     const ssrHasMedia = container.dataset.ssrHasMedia === 'true';
     const initialCount = container.children.length;
 
+    // Always fetch hydrated tweets from API gateway if SSR tweets lack media
     if (initialCount === 0 || !ssrHasMedia) {
       if (spinner) spinner.classList.remove('hidden');
       
-      fetchClientSideTimeline()
+      fetchTimelineFromGateway()
         .then(({ tweets, bottom_cursor }) => {
           if (spinner) spinner.classList.add('hidden');
           if (tweets.length > 0) {
-            // Replace text-only SSR placeholder cards with rich media cards
             container.innerHTML = '';
             for (const t of tweets) {
               container.insertAdjacentHTML('beforeend', buildTweetCardHtml(t));
@@ -441,7 +360,7 @@ const initialTweetsCount = tweets?.length || 0;
           }
         })
         .catch((err) => {
-          console.warn('Browser timeline sourcing fallback error:', err);
+          console.warn('Timeline gateway sourcing error:', err);
           if (spinner) spinner.classList.add('hidden');
           if (initialCount === 0 && fallback) fallback.classList.remove('hidden');
         });
@@ -475,24 +394,7 @@ const initialTweetsCount = tweets?.length || 0;
       if (loadMoreText) loadMoreText.textContent = 'Loading…';
 
       try {
-        let newTweets: any[] = [];
-        let newCursor: string | undefined;
-
-        // Fetch next page via direct browser syndication fetch
-        try {
-          const clientData = await fetchClientSideTimeline(currentCursor);
-          newTweets = clientData.tweets || [];
-          newCursor = clientData.bottom_cursor;
-        } catch {
-          // API endpoint fallback
-          const apiRes = await fetch(`/api/profile/${username}.json?cursor=${encodeURIComponent(currentCursor)}`);
-          if (apiRes.ok) {
-            const apiData = await apiRes.json();
-            newTweets = apiData.tweets || [];
-            newCursor = apiData.bottom_cursor;
-          }
-        }
-
+        const { tweets: newTweets, bottom_cursor: newCursor } = await fetchTimelineFromGateway(currentCursor);
         lastFetchTime = Date.now();
 
         if (newTweets.length === 0) {

@@ -7,7 +7,7 @@ export interface ParsedTimelineResult {
 }
 
 /**
- * Parses Twitter Syndication HTML payload (__NEXT_DATA__) into structured tweet objects with full media support.
+ * Parses Twitter Syndication HTML payload (__NEXT_DATA__) into structured tweet objects with full media & retweet support.
  */
 export function parseSyndicationHtml(html: string, fallbackUsername: string): ParsedTimelineResult {
   const marker = '<script id="__NEXT_DATA__" type="application/json">';
@@ -40,8 +40,17 @@ export function parseSyndicationHtml(html: string, fallbackUsername: string): Pa
       }
 
       if (entry.type === 'tweet' && entry.content?.tweet) {
-        const t = entry.content.tweet;
-        const mediaDetails = t.mediaDetails || [];
+        const rawTweet = entry.content.tweet;
+        const isRetweet = Boolean(rawTweet.retweeted_status);
+        const targetTweet = isRetweet ? rawTweet.retweeted_status : rawTweet;
+
+        const repostedBy = isRetweet ? {
+          name: rawTweet.user?.name || fallbackUsername,
+          screen_name: rawTweet.user?.screen_name || fallbackUsername,
+          avatar_url: rawTweet.user?.profile_image_url_https,
+        } : null;
+
+        const mediaDetails = targetTweet.mediaDetails || [];
         
         const photos = mediaDetails
           .filter((m: any) => m.type === 'photo')
@@ -56,7 +65,6 @@ export function parseSyndicationHtml(html: string, fallbackUsername: string): Pa
           .map((m: any) => {
             const variants = m.video_info?.variants || [];
             const mp4s = variants.filter((v: any) => v.content_type === 'video/mp4');
-            // Sort by bitrate descending to get highest quality MP4
             const bestMp4 = mp4s.sort((a: any, b: any) => (b.bitrate || 0) - (a.bitrate || 0))[0];
             const hlsVariants = variants.filter((v: any) => v.content_type === 'application/x-mpegURL');
             
@@ -69,30 +77,30 @@ export function parseSyndicationHtml(html: string, fallbackUsername: string): Pa
           });
 
         parsedTweets.push({
-          id: t.id_str,
-          text: t.full_text || t.text || '',
-          created_at: t.created_at,
+          id: rawTweet.id_str,
+          text: targetTweet.full_text || targetTweet.text || '',
+          created_at: targetTweet.created_at || rawTweet.created_at,
           author: {
-            name: t.user?.name || fallbackUsername,
-            screen_name: t.user?.screen_name || fallbackUsername,
-            avatar_url: t.user?.profile_image_url_https,
+            name: targetTweet.user?.name || fallbackUsername,
+            screen_name: targetTweet.user?.screen_name || fallbackUsername,
+            avatar_url: targetTweet.user?.profile_image_url_https,
           },
-          likes: t.favorite_count || 0,
-          retweets: t.retweet_count || 0,
-          replies: t.reply_count || t.conversation_count || 0,
+          reposted_by: repostedBy,
+          likes: targetTweet.favorite_count || 0,
+          retweets: targetTweet.retweet_count || 0,
+          replies: targetTweet.reply_count || targetTweet.conversation_count || 0,
           media: {
             photos: photos.length > 0 ? photos : undefined,
             videos: videos.length > 0 ? videos : undefined,
           },
-          replying_to: t.in_reply_to_status_id_str ? {
-            screen_name: t.in_reply_to_screen_name || '',
-            post_id: t.in_reply_to_status_id_str,
+          replying_to: targetTweet.in_reply_to_status_id_str ? {
+            screen_name: targetTweet.in_reply_to_screen_name || '',
+            post_id: targetTweet.in_reply_to_status_id_str,
           } : null,
         });
       }
     }
 
-    // Fallback: If no explicit cursor entry was found, calculate max_id cursor from last tweet ID
     if (!bottomCursor && parsedTweets.length > 0) {
       const lastId = parsedTweets[parsedTweets.length - 1].id;
       try {

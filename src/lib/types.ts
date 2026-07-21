@@ -50,6 +50,11 @@ export interface FixTweetObject {
   created_at: string;
   created_timestamp?: number;
   author: FixTweetUser;
+  reposted_by?: {
+    name: string;
+    screen_name: string;
+    avatar_url?: string;
+  } | null;
   replies?: number;
   retweets?: number;
   likes?: number;

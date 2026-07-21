@@ -13,6 +13,11 @@ interface Props {
       avatar_url?: string;
       profile_image_url?: string;
     };
+    reposted_by?: {
+      name: string;
+      screen_name: string;
+      avatar_url?: string;
+    } | null;
     replies?: number;
     retweets?: number;
     likes?: number;
@@ -35,6 +40,19 @@ const hasMedia = photos.length > 0 || videos.length > 0;
 ---
 
 <article class="group relative rounded-lg border border-hairline bg-canvas-soft-2/50 p-4 transition-all duration-200 hover:border-hairline-strong vercel-card-glow" data-tweet-id={tweet.id}>
+  <!-- Reposted / Retweet Top Banner -->
+  {tweet.reposted_by && (
+    <div class="flex items-center space-x-1.5 text-xs text-mute font-mono mb-2 pb-2 border-b border-hairline/40">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="h-3.5 w-3.5 text-link shrink-0">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 0 0-3.7-3.7 48.678 48.678 0 0 0-7.324 0 4.006 4.006 0 0 0-3.7 3.7c-.017.22-.032.441-.046.662M4.5 12c0 1.232.046 2.453.138 3.662a4.006 4.006 0 0 0 3.7 3.7 48.656 48.656 0 0 0 7.324 0 4.006 4.006 0 0 0 3.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3-3m-3 3l3 3m12-3l-3-3m3 3l-3 3" />
+      </svg>
+      <a href={`/${tweet.reposted_by.screen_name}`} class="font-medium text-ink hover:underline">
+        {tweet.reposted_by.name}
+      </a>
+      <span>reposted</span>
+    </div>
+  )}
+
   <!-- Header: Avatar + User details + Timestamp -->
   <div class="flex items-start justify-between space-x-3 mb-3">
     <div class="flex items-center space-x-3 min-w-0">
@@ -324,24 +342,6 @@ const hasMedia = photos.length > 0 || videos.length > 0;
       };
 
       video.addEventListener('play', loadHls, { once: true });
-    });
-  }
-
-  function initHls(video: HTMLVideoElement, src: string) {
-    const Hls = (window as any).Hls;
-    if (!Hls || !Hls.isSupported()) return;
-
-    const hls = new Hls({ maxBufferLength: 30, maxMaxBufferLength: 60 });
-    hls.loadSource(src);
-    hls.attachMedia(video);
-    hls.on(Hls.Events.MANIFEST_PARSED, () => {
-      video.play().catch(() => {});
-    });
-    hls.on(Hls.Events.ERROR, (_: any, data: any) => {
-      if (data.fatal) {
-        console.warn('HLS fatal error, falling back to MP4 proxy');
-        hls.destroy();
-      }
     });
   }
 

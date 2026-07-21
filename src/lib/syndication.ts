@@ -7,7 +7,7 @@ export interface ParsedTimelineResult {
 }
 
 /**
- * Parses Twitter Syndication HTML payload (__NEXT_DATA__) into structured tweet objects.
+ * Parses Twitter Syndication HTML payload (__NEXT_DATA__) into structured tweet objects with full media support.
  */
 export function parseSyndicationHtml(html: string, fallbackUsername: string): ParsedTimelineResult {
   const marker = '<script id="__NEXT_DATA__" type="application/json">';
@@ -18,7 +18,7 @@ export function parseSyndicationHtml(html: string, fallbackUsername: string): Pa
   }
 
   const jsonStart = startIndex + marker.length;
-  const jsonEnd = html.indexOf('</script>', jsonStart);
+  const jsonEnd = html.indexOf('</' + 'script>', jsonStart);
   if (jsonEnd === -1) {
     return { tweets: [], error: 'Malformed timeline script' };
   }
@@ -32,7 +32,6 @@ export function parseSyndicationHtml(html: string, fallbackUsername: string): Pa
     let bottomCursor: string | undefined;
 
     for (const entry of entries) {
-      // Capture cursor entries for pagination
       if (entry.type === 'cursor') {
         const cursorVal = entry.content?.value || entry.content?.cursor?.value;
         if (entry.entryId?.includes('bottom') || entry.content?.cursorType === 'Bottom') {
@@ -43,20 +42,29 @@ export function parseSyndicationHtml(html: string, fallbackUsername: string): Pa
       if (entry.type === 'tweet' && entry.content?.tweet) {
         const t = entry.content.tweet;
         const mediaDetails = t.mediaDetails || [];
+        
         const photos = mediaDetails
           .filter((m: any) => m.type === 'photo')
-          .map((m: any) => ({ url: m.media_url_https }));
+          .map((m: any) => ({
+            url: m.media_url_https || m.url,
+            width: m.sizes?.large?.w || m.sizes?.medium?.w,
+            height: m.sizes?.large?.h || m.sizes?.medium?.h,
+          }));
 
         const videos = mediaDetails
           .filter((m: any) => m.type === 'video' || m.type === 'animated_gif')
           .map((m: any) => {
-            const mp4s = m.video_info?.variants?.filter((v: any) => v.content_type === 'video/mp4') || [];
-            const bestVideo = mp4s.sort((a: any, b: any) => (b.bitrate || 0) - (a.bitrate || 0))[0];
-            const hlsVariants = m.video_info?.variants?.filter((v: any) => v.content_type === 'application/x-mpegURL') || [];
+            const variants = m.video_info?.variants || [];
+            const mp4s = variants.filter((v: any) => v.content_type === 'video/mp4');
+            // Sort by bitrate descending to get highest quality MP4
+            const bestMp4 = mp4s.sort((a: any, b: any) => (b.bitrate || 0) - (a.bitrate || 0))[0];
+            const hlsVariants = variants.filter((v: any) => v.content_type === 'application/x-mpegURL');
+            
             return {
-              url: bestVideo?.url || m.media_url_https,
+              url: bestMp4?.url || m.media_url_https,
               thumbnail_url: m.media_url_https,
               hls_url: hlsVariants[0]?.url || undefined,
+              aspect_ratio: m.video_info?.aspect_ratio,
             };
           });
 
@@ -149,7 +157,7 @@ export async function fetchSyndicationTweet(tweetId: string): Promise<{ tweet?: 
 }
 
 /**
- * Fetch a paginated timeline from Twitter Syndication with guest cookies & fallback support.
+ * Fetch a paginated timeline from Twitter Syndication.
  */
 export async function fetchSyndicationTimeline(
   username: string,
@@ -175,9 +183,6 @@ export async function fetchSyndicationTimeline(
         'Accept-Language': 'en-US,en;q=0.9',
         'Cookie': `guest_id=${guestId}; guest_id_marketing=${guestId}; guest_id_ads=${guestId}`,
         'Referer': 'https://platform.twitter.com/',
-        'Sec-Ch-Ua': '"Chromium";v="124", "Google Chrome";v="124"',
-        'Sec-Ch-Ua-Mobile': '?0',
-        'Sec-Ch-Ua-Platform': '"Windows"',
       },
     });
 

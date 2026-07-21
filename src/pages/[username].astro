@@ -25,6 +25,8 @@ if (error || !user) {
   Astro.response.headers.set('Cache-Control', 'public, max-age=1800, stale-while-revalidate=300');
 }
 
+// Check if any SSR tweets have media
+const ssrHasMedia = tweets?.some(t => (t.media?.photos && t.media.photos.length > 0) || (t.media?.videos && t.media.videos.length > 0)) || false;
 const initialTweetsCount = tweets?.length || 0;
 ---
 
@@ -69,20 +71,20 @@ const initialTweetsCount = tweets?.length || 0;
             </div>
 
             <!-- Main Tweets Container -->
-            <div id="tweets-container" class="space-y-4">
+            <div id="tweets-container" class="space-y-4" data-ssr-has-media={ssrHasMedia ? 'true' : 'false'}>
               {tweets && tweets.length > 0 && tweets.map((tweet) => (
                 <TweetCard tweet={tweet} />
               ))}
             </div>
 
             <!-- Loading Spinner Placeholder for Client Sourcing -->
-            <div id="client-loading-spinner" class={`py-12 text-center ${initialTweetsCount > 0 ? 'hidden' : ''}`}>
+            <div id="client-loading-spinner" class={`py-12 text-center ${initialTweetsCount > 0 && ssrHasMedia ? 'hidden' : ''}`}>
               <div class="inline-flex items-center space-x-3 rounded-full border border-hairline bg-canvas-soft-2 px-5 py-2.5 shadow-sm">
                 <svg class="h-4 w-4 animate-spin text-link" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                   <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                <span class="font-mono text-xs text-ink font-medium">Loading @{username}'s latest tweets…</span>
+                <span class="font-mono text-xs text-ink font-medium">Sourcing timeline &amp; media for @{username}…</span>
               </div>
             </div>
 
@@ -182,9 +184,7 @@ const initialTweetsCount = tweets?.length || 0;
     let isLoading = false;
     let lastFetchTime = 0;
     const THROTTLE_MS = 2000;
-    const CACHE_TTL_MS = 15 * 60 * 1000;
 
-    // Helper to format text/html
     function formatNumber(num?: number): string {
       if (!num) return '0';
       if (num >= 1000000) return (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
@@ -280,7 +280,7 @@ const initialTweetsCount = tweets?.length || 0;
               Your browser does not support MP4 video playback.
             </video>
             <div class="p-2 bg-canvas-soft-2 border-t border-hairline flex items-center justify-between">
-              <span class="font-mono text-[11px] text-mute flex items-center space-x-1"><span class="h-2 w-2 rounded-full bg-cyan"></span><span>Direct MP4 Stream</span></span>
+              <span class="font-mono text-[11px] text-mute flex items-center space-x-1"><span class="h-2 w-2 rounded-full bg-cyan"></span><span>Direct MP4 Video Stream</span></span>
               <a href="${v.url}" target="_blank" download class="inline-flex items-center space-x-1 rounded bg-black/80 px-2.5 py-1 text-[11px] font-mono text-white hover:bg-black"><span>Download MP4</span></a>
             </div>
           </div>
@@ -321,7 +321,7 @@ const initialTweetsCount = tweets?.length || 0;
       </article>`;
     }
 
-    // Client-side fallback fetching function directly from browser
+    // Direct browser timeline sourcing with guest_id cookie
     async function fetchClientSideTimeline(cursor?: string): Promise<{ tweets: any[]; bottom_cursor?: string }> {
       let targetUrl = `https://syndication.twitter.com/srv/timeline-profile/screen-name/${username}`;
       if (cursor) {
@@ -363,6 +363,7 @@ const initialTweetsCount = tweets?.length || 0;
         if (entry.type === 'tweet' && entry.content?.tweet) {
           const t = entry.content.tweet;
           const mediaDetails = t.mediaDetails || [];
+          
           const photos = mediaDetails
             .filter((m: any) => m.type === 'photo')
             .map((m: any) => ({ url: m.media_url_https }));
@@ -412,14 +413,19 @@ const initialTweetsCount = tweets?.length || 0;
       return { tweets: parsedTweets, bottom_cursor: bCursor };
     }
 
-    // Auto-fetch client side if initial SSR returned 0 tweets
+    // ALWAYS perform client-side browser fetch if SSR tweets lack media
+    const ssrHasMedia = container.dataset.ssrHasMedia === 'true';
     const initialCount = container.children.length;
-    if (initialCount === 0) {
+
+    if (initialCount === 0 || !ssrHasMedia) {
       if (spinner) spinner.classList.remove('hidden');
+      
       fetchClientSideTimeline()
         .then(({ tweets, bottom_cursor }) => {
           if (spinner) spinner.classList.add('hidden');
           if (tweets.length > 0) {
+            // Replace text-only SSR placeholder cards with rich media cards
+            container.innerHTML = '';
             for (const t of tweets) {
               container.insertAdjacentHTML('beforeend', buildTweetCardHtml(t));
             }
@@ -431,13 +437,13 @@ const initialTweetsCount = tweets?.length || 0;
               (window as any).__setupLightboxes();
             }
           } else {
-            if (fallback) fallback.classList.remove('hidden');
+            if (initialCount === 0 && fallback) fallback.classList.remove('hidden');
           }
         })
         .catch((err) => {
           console.warn('Browser timeline sourcing fallback error:', err);
           if (spinner) spinner.classList.add('hidden');
-          if (fallback) fallback.classList.remove('hidden');
+          if (initialCount === 0 && fallback) fallback.classList.remove('hidden');
         });
     }
 
@@ -469,25 +475,22 @@ const initialTweetsCount = tweets?.length || 0;
       if (loadMoreText) loadMoreText.textContent = 'Loading…';
 
       try {
-        // Try server API first, then client-side browser fetch fallback
         let newTweets: any[] = [];
         let newCursor: string | undefined;
 
+        // Fetch next page via direct browser syndication fetch
         try {
+          const clientData = await fetchClientSideTimeline(currentCursor);
+          newTweets = clientData.tweets || [];
+          newCursor = clientData.bottom_cursor;
+        } catch {
+          // API endpoint fallback
           const apiRes = await fetch(`/api/profile/${username}.json?cursor=${encodeURIComponent(currentCursor)}`);
           if (apiRes.ok) {
             const apiData = await apiRes.json();
             newTweets = apiData.tweets || [];
             newCursor = apiData.bottom_cursor;
           }
-        } catch {
-          // fallback to direct browser fetch
-        }
-
-        if (newTweets.length === 0) {
-          const clientData = await fetchClientSideTimeline(currentCursor);
-          newTweets = clientData.tweets || [];
-          newCursor = clientData.bottom_cursor;
         }
 
         lastFetchTime = Date.now();

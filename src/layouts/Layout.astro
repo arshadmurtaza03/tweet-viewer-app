@@ -2,6 +2,7 @@
 import '../styles/global.css';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
+import { detectLanguage, isRTL, type LangCode } from '../lib/i18n';
 
 interface Props {
   title?: string;
@@ -19,10 +20,14 @@ const {
 
 const siteUrl = 'https://mytweetviewer.com';
 const pageUrl = canonicalUrl || new URL(Astro.url.pathname, siteUrl).href;
+
+// Detect language from cookie / Accept-Language on the server side
+const detectedLang = detectLanguage(Astro.request);
+const htmlDir = isRTL(detectedLang) ? 'rtl' : 'ltr';
 ---
 
 <!doctype html>
-<html lang="en" class="dark">
+<html lang={detectedLang} dir={htmlDir} class="dark">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -53,6 +58,36 @@ const pageUrl = canonicalUrl || new URL(Astro.url.pathname, siteUrl).href;
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+    <!-- Inline Zero-Flicker Theme + Language Initialization (Defaults to Dark) -->
+    <script is:inline>
+      (function() {
+        // Theme initialization
+        const storedTheme = localStorage.getItem('theme');
+        const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        let isDark = true;
+        if (storedTheme === 'light') {
+          isDark = false;
+        } else if (storedTheme === 'system') {
+          isDark = systemDark;
+        } else {
+          isDark = true;
+        }
+        if (isDark) {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+
+        // Language / RTL initialization
+        const storedLang = localStorage.getItem('preferred_lang');
+        if (storedLang) {
+          document.documentElement.setAttribute('lang', storedLang);
+          const rtlLangs = ['ar', 'ur'];
+          document.documentElement.setAttribute('dir', rtlLangs.includes(storedLang) ? 'rtl' : 'ltr');
+        }
+      })();
+    </script>
 
     <meta name="generator" content={Astro.generator} />
   </head>

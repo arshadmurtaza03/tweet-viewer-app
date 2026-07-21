@@ -1,0 +1,138 @@
+---
+import { SUPPORTED_LANGUAGES } from '../lib/i18n';
+---
+
+<div class="relative inline-block text-left" id="lang-toggle-container">
+  <button
+    id="lang-toggle-btn"
+    type="button"
+    aria-label="Select language"
+    class="inline-flex items-center space-x-1.5 rounded-full border border-hairline bg-canvas-soft-2 px-2.5 py-1 text-xs font-mono text-mute transition-all hover:border-hairline-strong hover:text-ink active:scale-95 shadow-sm"
+  >
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-3.5 w-3.5">
+      <path stroke-linecap="round" stroke-linejoin="round" d="m10.5 21 5.25-11.25L21 21m-9-3h7.5M3 5.621a48.474 48.474 0 0 1 6-.371m0 0c1.12 0 2.233.038 3.334.114M9 5.25V3m3.334 2.364C11.176 10.658 7.69 15.08 3 17.502m9.334-12.138c.896.061 1.785.147 2.666.257m-4.589 8.495a18.023 18.023 0 0 1-3.827-5.802" />
+    </svg>
+    <span id="lang-label" class="hidden sm:inline">EN</span>
+  </button>
+
+  <!-- Dropdown Menu -->
+  <div
+    id="lang-dropdown"
+    class="hidden absolute right-0 mt-2 w-48 max-h-72 overflow-y-auto origin-top-right rounded-md border border-hairline bg-canvas-soft-2 shadow-xl ring-1 ring-black/5 z-50 py-1 font-mono text-xs scrollbar-thin"
+  >
+    {SUPPORTED_LANGUAGES.map((lang) => (
+      <button
+        data-lang-set={lang.code}
+        type="button"
+        class="lang-option flex w-full items-center justify-between px-3 py-2 text-mute hover:bg-canvas hover:text-ink transition-colors"
+      >
+        <span class="flex items-center space-x-2">
+          <span class="text-body">{lang.nativeName}</span>
+          <span class="text-mute/60 text-[10px]">{lang.name}</span>
+        </span>
+        <span class="lang-check hidden text-link">&check;</span>
+      </button>
+    ))}
+  </div>
+</div>
+
+<script>
+  function setupLangToggle() {
+    const btn = document.getElementById('lang-toggle-btn');
+    const dropdown = document.getElementById('lang-dropdown');
+    const options = document.querySelectorAll('.lang-option');
+    const label = document.getElementById('lang-label');
+
+    if (!btn || !dropdown) return;
+
+    const currentLang = localStorage.getItem('preferred_lang') || 'en';
+
+    function applyLang(lang: string) {
+      localStorage.setItem('preferred_lang', lang);
+      // Set cookie for SSR detection (expires in 1 year)
+      document.cookie = `preferred_lang=${lang};path=/;max-age=31536000;SameSite=Lax`;
+
+      // Update label
+      if (label) label.textContent = lang.toUpperCase();
+
+      // Toggle RTL direction
+      const rtlLangs = ['ar', 'ur'];
+      if (rtlLangs.includes(lang)) {
+        document.documentElement.setAttribute('dir', 'rtl');
+      } else {
+        document.documentElement.setAttribute('dir', 'ltr');
+      }
+
+      // Update checkmarks
+      options.forEach((opt) => {
+        const code = (opt as HTMLElement).dataset.langSet;
+        const check = opt.querySelector('.lang-check');
+        if (code === lang) {
+          check?.classList.remove('hidden');
+          opt.classList.add('text-ink', 'font-medium');
+        } else {
+          check?.classList.add('hidden');
+          opt.classList.remove('text-ink', 'font-medium');
+        }
+      });
+
+      // Dynamically translate all [data-i18n] elements on the page
+      translatePage(lang);
+    }
+
+    async function translatePage(lang: string) {
+      try {
+        const res = await fetch(`/locales/${lang}.json`);
+        if (!res.ok) return;
+        const dict = await res.json();
+
+        document.querySelectorAll('[data-i18n]').forEach((el) => {
+          const key = (el as HTMLElement).dataset.i18n!;
+          if (dict[key]) {
+            el.textContent = dict[key];
+          }
+        });
+
+        document.querySelectorAll('[data-i18n-placeholder]').forEach((el) => {
+          const key = (el as HTMLElement).dataset.i18nPlaceholder!;
+          if (dict[key]) {
+            (el as HTMLInputElement).placeholder = dict[key];
+          }
+        });
+
+        document.querySelectorAll('[data-i18n-title]').forEach((el) => {
+          const key = (el as HTMLElement).dataset.i18nTitle!;
+          if (dict[key]) {
+            (el as HTMLElement).title = dict[key];
+          }
+        });
+      } catch (e) {
+        // Silently fall back if translation fetch fails
+      }
+    }
+
+    applyLang(currentLang);
+
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      dropdown.classList.toggle('hidden');
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!btn.contains(e.target as Node) && !dropdown.contains(e.target as Node)) {
+        dropdown.classList.add('hidden');
+      }
+    });
+
+    options.forEach((opt) => {
+      opt.addEventListener('click', () => {
+        const selected = (opt as HTMLElement).dataset.langSet || 'en';
+        applyLang(selected);
+        dropdown.classList.add('hidden');
+      });
+    });
+  }
+
+  setupLangToggle();
+  document.addEventListener('astro:page-load', setupLangToggle);
+</script>

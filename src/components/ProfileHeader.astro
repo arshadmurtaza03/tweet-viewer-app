@@ -28,14 +28,14 @@ const tweetsCount = user.tweets ?? user.statuses_count ?? 0;
 
   <!-- Profile Info Container -->
   <div class="mx-auto max-w-5xl px-4 pb-6">
-    <div class="flex items-end justify-between -mt-16 sm:-mt-20 mb-4">
+    <div class="flex flex-wrap items-end justify-between gap-3 -mt-14 sm:-mt-20 mb-4">
       <!-- Avatar -->
-      <div class="relative h-24 w-24 sm:h-32 sm:w-32 overflow-hidden rounded-full border-4 border-canvas bg-canvas shadow-2xl">
+      <div class="relative h-20 w-20 sm:h-32 sm:w-32 overflow-hidden rounded-full border-4 border-canvas bg-canvas shadow-2xl shrink-0">
         <img src={avatar} alt={user.name} class="h-full w-full object-cover" />
       </div>
 
       <!-- Favorite / Bookmark Button -->
-      <div class="flex items-center space-x-2">
+      <div class="flex items-center space-x-2 shrink-0">
         <button
           id="toggle-fav-btn"
           data-username={user.screen_name}

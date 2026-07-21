@@ -37,6 +37,7 @@ export interface FixTweetMedia {
   type: 'photo' | 'video' | 'gif';
   url: string;
   thumbnail_url?: string;
+  hls_url?: string;
   width?: number;
   height?: number;
   duration?: number;

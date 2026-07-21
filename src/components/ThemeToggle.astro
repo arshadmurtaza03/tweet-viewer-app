@@ -1,0 +1,151 @@
+---
+---
+
+<div class="relative inline-block text-left" id="theme-toggle-container">
+  <button
+    id="theme-toggle-btn"
+    type="button"
+    aria-label="Toggle theme mode"
+    class="inline-flex items-center space-x-1.5 rounded-full border border-hairline bg-canvas-soft-2 px-2.5 py-1 text-xs font-mono text-mute transition-all hover:border-hairline-strong hover:text-ink active:scale-95 shadow-sm"
+  >
+    <!-- Sun Icon (Light) -->
+    <svg id="theme-icon-light" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-3.5 w-3.5 text-amber-400 hidden">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m0 13.5V21m8.966-8.966h-2.25m-13.5 0H3m15.364-6.364l-1.591 1.591M6.758 17.242l-1.591 1.591m12.728 0l-1.591-1.591M6.758 6.758L5.167 5.167M12 7.5a4.5 4.5 0 100 9 4.5 4.5 0 000-9z" />
+    </svg>
+    <!-- Moon Icon (Dark) -->
+    <svg id="theme-icon-dark" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-3.5 w-3.5 text-cyan">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
+    </svg>
+    <!-- System Icon -->
+    <svg id="theme-icon-system" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-3.5 w-3.5 text-mute hidden">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0h-18" />
+    </svg>
+    <span id="theme-label" class="capitalize">Dark</span>
+  </button>
+
+  <!-- Dropdown Menu -->
+  <div
+    id="theme-dropdown"
+    class="hidden absolute right-0 mt-2 w-32 origin-top-right rounded-md border border-hairline bg-canvas-soft-2 shadow-xl ring-1 ring-black/5 z-50 py-1 font-mono text-xs"
+  >
+    <button
+      data-theme-set="dark"
+      type="button"
+      class="theme-option flex w-full items-center justify-between px-3 py-1.5 text-mute hover:bg-canvas hover:text-ink transition-colors"
+    >
+      <span>Dark</span>
+      <span class="theme-check hidden text-cyan">&check;</span>
+    </button>
+    <button
+      data-theme-set="light"
+      type="button"
+      class="theme-option flex w-full items-center justify-between px-3 py-1.5 text-mute hover:bg-canvas hover:text-ink transition-colors"
+    >
+      <span>Light</span>
+      <span class="theme-check hidden text-amber-400">&check;</span>
+    </button>
+    <button
+      data-theme-set="system"
+      type="button"
+      class="theme-option flex w-full items-center justify-between px-3 py-1.5 text-mute hover:bg-canvas hover:text-ink transition-colors"
+    >
+      <span>System</span>
+      <span class="theme-check hidden text-link">&check;</span>
+    </button>
+  </div>
+</div>
+
+<script>
+  function setupThemeToggle() {
+    const btn = document.getElementById('theme-toggle-btn');
+    const dropdown = document.getElementById('theme-dropdown');
+    const options = document.querySelectorAll('.theme-option');
+    const label = document.getElementById('theme-label');
+
+    const iconLight = document.getElementById('theme-icon-light');
+    const iconDark = document.getElementById('theme-icon-dark');
+    const iconSystem = document.getElementById('theme-icon-system');
+
+    if (!btn || !dropdown) return;
+
+    function applyTheme(theme: string) {
+      localStorage.setItem('theme', theme);
+      const isSysDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      let effectiveDark = true;
+
+      if (theme === 'light') {
+        effectiveDark = false;
+      } else if (theme === 'system') {
+        effectiveDark = isSysDark;
+      } else {
+        effectiveDark = true;
+      }
+
+      if (effectiveDark) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+
+      // Update UI Icons & Labels
+      if (label) label.textContent = theme;
+
+      iconLight?.classList.add('hidden');
+      iconDark?.classList.add('hidden');
+      iconSystem?.classList.add('hidden');
+
+      if (theme === 'light') {
+        iconLight?.classList.remove('hidden');
+      } else if (theme === 'dark') {
+        iconDark?.classList.remove('hidden');
+      } else {
+        iconSystem?.classList.remove('hidden');
+      }
+
+      // Checkmarks in dropdown
+      options.forEach((opt) => {
+        const t = (opt as HTMLElement).dataset.themeSet;
+        const check = opt.querySelector('.theme-check');
+        if (t === theme) {
+          check?.classList.remove('hidden');
+          opt.classList.add('text-ink', 'font-medium');
+        } else {
+          check?.classList.add('hidden');
+          opt.classList.remove('text-ink', 'font-medium');
+        }
+      });
+    }
+
+    const currentTheme = localStorage.getItem('theme') || 'dark';
+    applyTheme(currentTheme);
+
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      dropdown.classList.toggle('hidden');
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!btn.contains(e.target as Node) && !dropdown.contains(e.target as Node)) {
+        dropdown.classList.add('hidden');
+      }
+    });
+
+    options.forEach((opt) => {
+      opt.addEventListener('click', () => {
+        const selected = (opt as HTMLElement).dataset.themeSet || 'dark';
+        applyTheme(selected);
+        dropdown.classList.add('hidden');
+      });
+    });
+
+    // Listen for OS system theme changes if set to system
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+      if (localStorage.getItem('theme') === 'system') {
+        applyTheme('system');
+      }
+    });
+  }
+
+  setupThemeToggle();
+  document.addEventListener('astro:page-load', setupThemeToggle);
+</script>

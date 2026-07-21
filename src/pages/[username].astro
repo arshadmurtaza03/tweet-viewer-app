@@ -16,8 +16,14 @@ if (!username || !/^[a-zA-Z0-9_]{1,15}$/.test(username)) {
   return Astro.redirect('/');
 }
 
-const { user, tweets, error } = await fetchFixTweetProfile(username);
+const { user, tweets, bottom_cursor, error } = await fetchFixTweetProfile(username);
 const seo = user ? buildProfileSeo(user.screen_name, user.name, user.description, user.avatar_url) : null;
+
+if (error || !user) {
+  Astro.response.status = 404;
+} else {
+  Astro.response.headers.set('Cache-Control', 'public, max-age=1800, stale-while-revalidate=300');
+}
 ---
 
 <Layout
@@ -35,11 +41,11 @@ const seo = user ? buildProfileSeo(user.screen_name, user.name, user.description
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
           </svg>
         </div>
-        <h1 class="font-sans text-xl font-semibold text-ink mb-2">Profile Unavailable</h1>
+        <h1 class="font-sans text-xl font-semibold text-ink mb-2" data-i18n="profile_unavailable">Profile Unavailable</h1>
         <p class="font-sans text-xs text-body mb-6">{error || `User @${username} could not be found or account is restricted.`}</p>
 
         <div class="pt-2 border-t border-hairline">
-          <p class="font-mono text-xs text-mute mb-4">Try searching for another user or link:</p>
+          <p class="font-mono text-xs text-mute mb-4" data-i18n="try_search">Try searching for another user or link:</p>
           <SearchInput />
         </div>
       </div>
@@ -56,12 +62,12 @@ const seo = user ? buildProfileSeo(user.screen_name, user.name, user.description
           <!-- Tweets Column (2-cols width on desktop) -->
           <div class="lg:col-span-2 space-y-6">
             <div class="flex items-center justify-between border-b border-hairline pb-3">
-              <h2 class="font-mono text-xs uppercase tracking-wider text-mute">Profile Feed &amp; Tweets</h2>
-              <span class="font-mono text-xs text-emerald-400 font-medium">&bull; Edge Active</span>
+              <h2 class="font-mono text-xs uppercase tracking-wider text-mute" data-i18n="profile_feed">Profile Feed &amp; Tweets</h2>
+              <span class="font-mono text-xs text-emerald-400 font-medium">&bull; <span data-i18n="edge_active">Edge Active</span></span>
             </div>
 
             {tweets && tweets.length > 0 ? (
-              <div class="space-y-4">
+              <div id="tweets-container" class="space-y-4">
                 {tweets.map((tweet) => (
                   <TweetCard tweet={tweet} />
                 ))}
@@ -89,11 +95,31 @@ const seo = user ? buildProfileSeo(user.screen_name, user.name, user.description
                       placeholder={`e.g. https://x.com/${user.screen_name}/status/...`}
                       class="w-full rounded-md border border-hairline bg-canvas px-3 py-2 text-xs text-ink placeholder-mute focus:border-hairline-strong focus:outline-none"
                     />
-                    <button type="submit" class="rounded-md bg-ink px-4 py-2 text-xs font-medium text-on-primary hover:opacity-90 shrink-0">
+                    <button type="submit" class="rounded-md bg-ink px-4 py-2 text-xs font-medium text-on-primary hover:opacity-90 shrink-0" data-i18n="view_tweet">
                       View Tweet
                     </button>
                   </div>
                 </form>
+              </div>
+            )}
+
+            <!-- Load More Tweets Button -->
+            {bottom_cursor && tweets && tweets.length > 0 && (
+              <div id="load-more-container" class="flex flex-col items-center space-y-3 pt-4 pb-2">
+                <button
+                  id="load-more-btn"
+                  type="button"
+                  data-username={username}
+                  data-cursor={bottom_cursor}
+                  class="group inline-flex items-center space-x-2 rounded-lg border border-hairline bg-canvas-soft-2 px-6 py-3 text-sm font-medium text-ink transition-all hover:border-hairline-strong hover:bg-canvas hover:shadow-md active:scale-[0.98]"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-4 w-4 transition-transform group-hover:translate-y-0.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5 12 21m0 0-7.5-7.5M12 21V3" />
+                  </svg>
+                  <span id="load-more-text" data-i18n="load_more">Load More Tweets</span>
+                </button>
+                <!-- Throttle countdown badge -->
+                <span id="throttle-badge" class="hidden text-xs font-mono text-warning bg-warning/10 border border-warning/20 rounded-full px-3 py-1"></span>
               </div>
             )}
           </div>
@@ -105,18 +131,18 @@ const seo = user ? buildProfileSeo(user.screen_name, user.name, user.description
 
             <!-- Profile Privacy & Fast Facts Box -->
             <div class="rounded-lg border border-hairline bg-canvas-soft-2 p-5 text-xs space-y-3">
-              <h3 class="font-mono uppercase text-mute tracking-wider">Privacy &amp; Edge Cache</h3>
-              <p class="text-body leading-relaxed">
+              <h3 class="font-mono uppercase text-mute tracking-wider" data-i18n="privacy_title">Privacy &amp; Edge Cache</h3>
+              <p class="text-body leading-relaxed" data-i18n="privacy_desc">
                 Profile metadata is fetched directly from public endpoints. Zero tracking cookies or credentials required.
               </p>
               <div class="pt-2 border-t border-hairline space-y-1 font-mono text-mute">
                 <div class="flex justify-between">
-                  <span>Cache TTL:</span>
-                  <span class="text-ink">30 minutes</span>
+                  <span data-i18n="cache_ttl">Cache TTL:</span>
+                  <span class="text-ink" data-i18n="minutes_30">30 minutes</span>
                 </div>
                 <div class="flex justify-between">
-                  <span>Privacy:</span>
-                  <span class="text-emerald-400">100% Anonymous</span>
+                  <span data-i18n="privacy_level">Privacy:</span>
+                  <span class="text-emerald-400" data-i18n="privacy_anon">100% Anonymous</span>
                 </div>
               </div>
             </div>
@@ -130,3 +156,299 @@ const seo = user ? buildProfileSeo(user.screen_name, user.name, user.description
     <script type="application/ld+json" set:html={JSON.stringify(seo.jsonLd)} />
   )}
 </Layout>
+
+<script>
+  function setupLoadMore() {
+    const btn = document.getElementById('load-more-btn') as HTMLButtonElement | null;
+    const container = document.getElementById('tweets-container');
+    const loadMoreContainer = document.getElementById('load-more-container');
+    const btnText = document.getElementById('load-more-text');
+    const throttleBadge = document.getElementById('throttle-badge');
+
+    if (!btn || !container) return;
+
+    let currentCursor = btn.dataset.cursor || '';
+    const username = btn.dataset.username || '';
+    let isLoading = false;
+    let lastFetchTime = 0;
+    const THROTTLE_MS = 2000; // 1 request per 2 seconds
+    const CACHE_TTL_MS = 15 * 60 * 1000; // 15-minute localStorage cache
+    let retryCount = 0;
+    const MAX_RETRIES = 3;
+
+    // Client-side localStorage cache helpers
+    function getCacheKey(user: string, cursor: string) {
+      return `tvt_${user}_${cursor}`;
+    }
+
+    function getFromCache(user: string, cursor: string): any | null {
+      try {
+        const key = getCacheKey(user, cursor);
+        const raw = localStorage.getItem(key);
+        if (!raw) return null;
+        const cached = JSON.parse(raw);
+        if (Date.now() - cached.ts > CACHE_TTL_MS) {
+          localStorage.removeItem(key);
+          return null;
+        }
+        return cached.data;
+      } catch {
+        return null;
+      }
+    }
+
+    function setCache(user: string, cursor: string, data: any) {
+      try {
+        const key = getCacheKey(user, cursor);
+        localStorage.setItem(key, JSON.stringify({ ts: Date.now(), data }));
+      } catch {
+        // localStorage full, silently fail
+      }
+    }
+
+    // Throttle countdown display
+    function showThrottleCountdown(remainingMs: number) {
+      if (!throttleBadge) return;
+      const seconds = Math.ceil(remainingMs / 1000);
+      throttleBadge.textContent = `Please wait ${seconds}s`;
+      throttleBadge.classList.remove('hidden');
+
+      const interval = setInterval(() => {
+        const left = Math.ceil((lastFetchTime + THROTTLE_MS - Date.now()) / 1000);
+        if (left <= 0) {
+          throttleBadge.classList.add('hidden');
+          clearInterval(interval);
+          btn.disabled = false;
+          btn.classList.remove('opacity-50', 'cursor-not-allowed');
+        } else {
+          throttleBadge.textContent = `Please wait ${left}s`;
+        }
+      }, 250);
+    }
+
+    // Exponential backoff for rate-limited retries
+    function getBackoffDelay(attempt: number): number {
+      return Math.min(1000 * Math.pow(2, attempt), 16000);
+    }
+
+    async function fetchMore(cursor: string, retryAttempt = 0): Promise<any> {
+      const res = await fetch(`/api/profile/${username}.json?cursor=${encodeURIComponent(cursor)}`);
+
+      if (res.status === 429 && retryAttempt < MAX_RETRIES) {
+        const delay = getBackoffDelay(retryAttempt);
+        if (btnText) btnText.textContent = `Retrying in ${Math.ceil(delay / 1000)}s…`;
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return fetchMore(cursor, retryAttempt + 1);
+      }
+
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+
+      return res.json();
+    }
+
+    btn.addEventListener('click', async () => {
+      if (isLoading || !currentCursor) return;
+
+      // Throttle check
+      const now = Date.now();
+      const elapsed = now - lastFetchTime;
+      if (elapsed < THROTTLE_MS) {
+        btn.disabled = true;
+        btn.classList.add('opacity-50', 'cursor-not-allowed');
+        showThrottleCountdown(THROTTLE_MS - elapsed);
+        return;
+      }
+
+      isLoading = true;
+      btn.disabled = true;
+      btn.classList.add('opacity-50');
+      if (btnText) btnText.textContent = 'Loading…';
+
+      try {
+        // Check localStorage cache first
+        let data = getFromCache(username, currentCursor);
+
+        if (!data) {
+          data = await fetchMore(currentCursor);
+          setCache(username, currentCursor, data);
+        }
+
+        lastFetchTime = Date.now();
+        retryCount = 0;
+
+        const newTweets = data.tweets || [];
+        if (newTweets.length === 0) {
+          if (btnText) btnText.textContent = 'No more tweets to load';
+          btn.disabled = true;
+          btn.classList.add('opacity-50', 'cursor-not-allowed');
+          return;
+        }
+
+        // Render new tweets into the DOM
+        for (const tweet of newTweets) {
+          const card = createTweetCard(tweet);
+          container.insertAdjacentHTML('beforeend', card);
+        }
+
+        // Update cursor for next page
+        if (data.bottom_cursor) {
+          currentCursor = data.bottom_cursor;
+          btn.dataset.cursor = currentCursor;
+          if (btnText) btnText.textContent = 'Load More Tweets';
+          btn.disabled = false;
+          btn.classList.remove('opacity-50');
+        } else {
+          if (btnText) btnText.textContent = 'No more tweets to load';
+          btn.disabled = true;
+          btn.classList.add('opacity-50', 'cursor-not-allowed');
+        }
+
+        // Re-initialize lightboxes for new images
+        if (typeof (window as any).__setupLightboxes === 'function') {
+          (window as any).__setupLightboxes();
+        }
+      } catch (err) {
+        console.error('Load more error:', err);
+        if (btnText) btnText.textContent = 'Failed to load — Retry';
+        btn.disabled = false;
+        btn.classList.remove('opacity-50');
+      } finally {
+        isLoading = false;
+      }
+    });
+
+    function formatNum(n?: number): string {
+      if (!n) return '0';
+      if (n >= 1000000) return (n / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+      if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+      return n.toLocaleString();
+    }
+
+    function formatDateStr(ds?: string): string {
+      if (!ds) return '';
+      try {
+        const d = new Date(ds);
+        if (isNaN(d.getTime())) return ds;
+        const now = new Date();
+        const diff = Math.floor((now.getTime() - d.getTime()) / 1000);
+        if (diff < 60) return diff + 's';
+        if (diff < 3600) return Math.floor(diff / 60) + 'm';
+        if (diff < 86400) return Math.floor(diff / 3600) + 'h';
+        if (diff < 604800) return Math.floor(diff / 86400) + 'd';
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: d.getFullYear() !== now.getFullYear() ? 'numeric' : undefined });
+      } catch { return ds; }
+    }
+
+    function escapeHtml(text: string): string {
+      return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function formatText(text: string): string {
+      let s = escapeHtml(text);
+      s = s.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-link hover:underline">$1</a>');
+      s = s.replace(/(^|[^a-zA-Z0-9_])@([a-zA-Z0-9_]{1,15})/g, '$1<a href="/$2" class="text-link hover:underline font-medium">@$2</a>');
+      s = s.replace(/(^|[^a-zA-Z0-9_])#([a-zA-Z0-9_]+)/g, '$1<a href="https://x.com/hashtag/$2" target="_blank" rel="noopener noreferrer" class="text-link hover:underline">#$2</a>');
+      return s.replace(/\n/g, '<br/>');
+    }
+
+    function createTweetCard(tweet: any): string {
+      const avatar = tweet.author?.avatar_url || tweet.author?.profile_image_url || 'https://abs.twimg.com/sticky/default_profile_images/default_profile_normal.png';
+      const name = escapeHtml(tweet.author?.name || '');
+      const handle = escapeHtml(tweet.author?.screen_name || '');
+      const date = formatDateStr(tweet.created_at);
+      const text = formatText(tweet.text || '');
+      const photos = tweet.media?.photos || [];
+      const videos = tweet.media?.videos || [];
+
+      let mediaHtml = '';
+
+      // Photo grids
+      if (photos.length === 1) {
+        mediaHtml = `<div class="mb-4 rounded-lg overflow-hidden border border-hairline bg-canvas relative group/media">
+          <div class="relative overflow-hidden bg-black/40">
+            <img src="${photos[0].url}" alt="Tweet image" loading="lazy" class="tweet-lightbox-img w-full h-auto max-h-[500px] object-cover cursor-zoom-in transition-transform duration-300 hover:scale-[1.02]" data-full-img="${photos[0].url}" onerror="this.parentElement.innerHTML='<div class=\\'flex items-center justify-center h-48 bg-canvas-soft-2 text-mute text-xs font-mono\\'>Media unavailable</div>'"/>
+          </div>
+        </div>`;
+      } else if (photos.length === 2) {
+        mediaHtml = `<div class="mb-4 rounded-lg overflow-hidden border border-hairline bg-canvas relative group/media">
+          <div class="grid grid-cols-2 gap-1 bg-black/40">
+            ${photos.map((p: any, i: number) => `<div class="relative overflow-hidden h-64"><img src="${p.url}" alt="Tweet photo ${i+1}" loading="lazy" class="tweet-lightbox-img h-full w-full object-cover cursor-zoom-in transition-transform duration-300 hover:scale-105" data-full-img="${p.url}" onerror="this.parentElement.innerHTML='<div class=\\'flex items-center justify-center h-full bg-canvas-soft-2 text-mute text-xs font-mono\\'>Media unavailable</div>'"/></div>`).join('')}
+          </div>
+        </div>`;
+      } else if (photos.length === 3) {
+        mediaHtml = `<div class="mb-4 rounded-lg overflow-hidden border border-hairline bg-canvas relative group/media">
+          <div class="grid grid-cols-3 gap-1 bg-black/40 h-72">
+            <div class="col-span-2 relative overflow-hidden h-full"><img src="${photos[0].url}" alt="Tweet photo 1" loading="lazy" class="tweet-lightbox-img h-full w-full object-cover cursor-zoom-in transition-transform duration-300 hover:scale-105" data-full-img="${photos[0].url}" onerror="this.parentElement.innerHTML='<div class=\\'flex items-center justify-center h-full bg-canvas-soft-2 text-mute text-xs font-mono\\'>Media unavailable</div>'"/></div>
+            <div class="col-span-1 grid grid-rows-2 gap-1 h-full">
+              ${photos.slice(1).map((p: any, i: number) => `<div class="relative overflow-hidden h-full"><img src="${p.url}" alt="Tweet photo ${i+2}" loading="lazy" class="tweet-lightbox-img h-full w-full object-cover cursor-zoom-in transition-transform duration-300 hover:scale-105" data-full-img="${p.url}" onerror="this.parentElement.innerHTML='<div class=\\'flex items-center justify-center h-full bg-canvas-soft-2 text-mute text-xs font-mono\\'>Media unavailable</div>'"/></div>`).join('')}
+            </div>
+          </div>
+        </div>`;
+      } else if (photos.length >= 4) {
+        mediaHtml = `<div class="mb-4 rounded-lg overflow-hidden border border-hairline bg-canvas relative group/media">
+          <div class="grid grid-cols-2 gap-1 bg-black/40 h-72">
+            ${photos.slice(0,4).map((p: any, i: number) => `<div class="relative overflow-hidden h-full"><img src="${p.url}" alt="Tweet photo ${i+1}" loading="lazy" class="tweet-lightbox-img h-full w-full object-cover cursor-zoom-in transition-transform duration-300 hover:scale-105" data-full-img="${p.url}" onerror="this.parentElement.innerHTML='<div class=\\'flex items-center justify-center h-full bg-canvas-soft-2 text-mute text-xs font-mono\\'>Media unavailable</div>'"/></div>`).join('')}
+          </div>
+        </div>`;
+      }
+
+      // Videos
+      if (videos.length > 0) {
+        mediaHtml += videos.map((vid: any) => `<div class="mb-4 rounded-lg overflow-hidden border border-hairline bg-black relative group/vid">
+          <div class="relative">
+            <video controls preload="metadata" poster="${vid.thumbnail_url || ''}" class="w-full max-h-[480px] object-contain bg-black" ${vid.hls_url ? `data-hls-src="${vid.hls_url}"` : ''}>
+              <source src="${vid.url}" type="video/mp4"/>
+              Your browser does not support HTML5 MP4 video playback.
+            </video>
+            <div class="p-2 bg-canvas-soft-2 border-t border-hairline flex items-center justify-between">
+              <span class="font-mono text-[11px] text-mute flex items-center space-x-1"><span class="h-2 w-2 rounded-full bg-cyan"></span><span>Direct MP4 Video Stream</span></span>
+            </div>
+          </div>
+        </div>`).join('');
+      }
+
+      return `<article class="group relative rounded-lg border border-hairline bg-canvas-soft-2/50 p-4 transition-all duration-200 hover:border-hairline-strong vercel-card-glow">
+        <div class="flex items-start justify-between space-x-3 mb-3">
+          <div class="flex items-center space-x-3 min-w-0">
+            <a href="/${handle}" class="shrink-0 transition-opacity hover:opacity-80">
+              <img src="${avatar}" alt="${name}" loading="lazy" class="h-10 w-10 rounded-full border border-hairline bg-canvas object-cover shadow-sm"/>
+            </a>
+            <div class="min-w-0 flex-1">
+              <a href="/${handle}" class="truncate font-sans text-sm font-semibold text-ink hover:underline block">${name}</a>
+              <p class="truncate font-mono text-xs text-mute">@${handle}</p>
+            </div>
+          </div>
+          <div class="flex items-center space-x-2 shrink-0">
+            <time datetime="${tweet.created_at}" class="font-mono text-xs text-mute">${date}</time>
+            <a href="/status/${tweet.id}" title="View single tweet thread &amp; media" class="rounded p-1 text-mute hover:bg-canvas hover:text-ink transition-colors">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-4 w-4"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/></svg>
+            </a>
+          </div>
+        </div>
+        <div class="font-sans text-sm text-ink leading-relaxed mb-3 break-words">${text}</div>
+        ${mediaHtml}
+        <div class="flex items-center justify-between border-t border-hairline pt-3 text-xs text-mute font-mono">
+          <div class="flex items-center space-x-4">
+            ${tweet.replies !== undefined ? `<span class="flex items-center space-x-1" title="Replies"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-3.5 w-3.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 0 1-.923 1.785A5.969 5.969 0 0 0 6 21c1.282 0 2.47-.402 3.445-1.087.51-.358 1.156-.47 1.755-.383A9.704 9.704 0 0 0 12 20.25Z"/></svg><span class="tabular-nums">${formatNum(tweet.replies)}</span></span>` : ''}
+            ${tweet.retweets !== undefined ? `<span class="flex items-center space-x-1" title="Retweets"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-3.5 w-3.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 0 0-3.7-3.7 48.678 48.678 0 0 0-7.324 0 4.006 4.006 0 0 0-3.7 3.7c-.017.22-.032.441-.046.662M4.5 12c0 1.232.046 2.453.138 3.662a4.006 4.006 0 0 0 3.7 3.7 48.656 48.656 0 0 0 7.324 0 4.006 4.006 0 0 0 3.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3-3m-3 3l3 3m12-3l-3-3m3 3l-3 3"/></svg><span class="tabular-nums">${formatNum(tweet.retweets)}</span></span>` : ''}
+            ${tweet.likes !== undefined ? `<span class="flex items-center space-x-1" title="Likes"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-3.5 w-3.5"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z"/></svg><span class="tabular-nums">${formatNum(tweet.likes)}</span></span>` : ''}
+          </div>
+          <a href="/status/${tweet.id}" class="inline-flex items-center space-x-1 text-xs text-link hover:underline font-sans">
+            <span>View Thread &amp; Export</span>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-3 w-3"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg>
+          </a>
+        </div>
+      </article>`;
+    }
+  }
+
+  setupLoadMore();
+  document.addEventListener('astro:page-load', setupLoadMore);
+</script>

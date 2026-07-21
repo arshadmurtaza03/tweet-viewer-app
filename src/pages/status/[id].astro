@@ -79,6 +79,22 @@ if (normalizedTweet && normalizedTweet.replying_to?.post_id) {
   }
 }
 
+// 3. Fetch Child Replies from author timeline
+const childTweets: FixTweetObject[] = [];
+if (normalizedTweet && normalizedTweet.author?.screen_name) {
+  try {
+    const userFeed = await fetchFixTweetProfile(normalizedTweet.author.screen_name);
+    if (userFeed.tweets) {
+      const replies = userFeed.tweets.filter(
+        (t) => t.replying_to?.post_id === id && t.id !== id
+      );
+      childTweets.push(...replies);
+    }
+  } catch (e) {
+    // optional child thread fetch fallback
+  }
+}
+
 // Extract media URL for download button & SEO
 const photos = normalizedTweet?.media?.photos || [];
 const videos = normalizedTweet?.media?.videos || [];
@@ -88,6 +104,12 @@ const isVideo = videos.length > 0;
 const seo = normalizedTweet
   ? buildTweetSeo(id, normalizedTweet.author.name, normalizedTweet.author.screen_name, normalizedTweet.text, primaryMedia)
   : null;
+
+if (error || !normalizedTweet) {
+  Astro.response.status = 404;
+} else {
+  Astro.response.headers.set('Cache-Control', 'public, max-age=3600, stale-while-revalidate=600');
+}
 ---
 
 <Layout
@@ -172,6 +194,7 @@ const seo = normalizedTweet
         <ThreadUnroller
           parentTweets={parentTweets}
           currentTweet={normalizedTweet}
+          childTweets={childTweets}
           maxDepth={3}
         />
       </div>

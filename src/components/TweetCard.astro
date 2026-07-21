@@ -1,5 +1,6 @@
 ---
 import { formatNumber, formatDate, formatTweetText } from '../lib/format';
+import MediaDownloadButton from './MediaDownloadButton.astro';
 
 interface Props {
   tweet: {
@@ -18,7 +19,7 @@ interface Props {
     views?: number;
     media?: {
       photos?: Array<{ url: string }>;
-      videos?: Array<{ url: string; thumbnail_url?: string }>;
+      videos?: Array<{ url: string; thumbnail_url?: string; hls_url?: string }>;
     };
   };
 }
@@ -29,6 +30,8 @@ const formattedText = formatTweetText(tweet.text);
 const formattedDate = formatDate(tweet.created_at);
 const photos = tweet.media?.photos || [];
 const videos = tweet.media?.videos || [];
+
+const hasMedia = photos.length > 0 || videos.length > 0;
 ---
 
 <article class="group relative rounded-lg border border-hairline bg-canvas-soft-2/50 p-4 transition-all duration-200 hover:border-hairline-strong vercel-card-glow">
@@ -40,7 +43,7 @@ const videos = tweet.media?.videos || [];
           src={avatar}
           alt={tweet.author.name}
           loading="lazy"
-          class="h-10 w-10 rounded-full border border-hairline bg-canvas object-cover"
+          class="h-10 w-10 rounded-full border border-hairline bg-canvas object-cover shadow-sm"
         />
       </a>
       <div class="min-w-0 flex-1">
@@ -55,7 +58,7 @@ const videos = tweet.media?.videos || [];
       <time datetime={tweet.created_at} class="font-mono text-xs text-mute">{formattedDate}</time>
       <a 
         href={`/status/${tweet.id}`} 
-        title="View single tweet thread" 
+        title="View single tweet thread & media" 
         class="rounded p-1 text-mute hover:bg-canvas hover:text-ink transition-colors"
       >
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-4 w-4">
@@ -65,44 +68,118 @@ const videos = tweet.media?.videos || [];
     </div>
   </div>
 
-  <!-- Tweet Body Text -->
+  <!-- Tweet Text -->
   <div class="font-sans text-sm text-ink leading-relaxed mb-3 break-words" set:html={formattedText} />
 
-  <!-- Media Grid -->
+  <!-- Embedded Photos Rendering (1, 2, 3, 4 Grid) -->
   {photos.length > 0 && (
-    <div class={`grid gap-2 mb-4 rounded-md overflow-hidden border border-hairline ${photos.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
-      {photos.map((photo, i) => (
-        <a href={photo.url} target="_blank" rel="noopener noreferrer" class="relative group/img overflow-hidden block bg-canvas">
+    <div class="mb-4 rounded-lg overflow-hidden border border-hairline bg-canvas relative group/media">
+      {photos.length === 1 && (
+        <div class="relative overflow-hidden bg-black/40">
           <img 
-            src={photo.url} 
-            alt={`Tweet media ${i + 1}`} 
+            src={photos[0].url} 
+            alt="Tweet image" 
             loading="lazy"
-            class="w-full h-auto max-h-[400px] object-cover transition-transform duration-300 group-hover/img:scale-105"
+            class="tweet-lightbox-img tweet-media-img w-full h-auto max-h-[512px] object-cover cursor-zoom-in transition-transform duration-300 hover:scale-[1.02]"
+            data-full-img={photos[0].url}
           />
-        </a>
-      ))}
+          <div class="absolute bottom-2 right-2 opacity-0 group-hover/media:opacity-100 transition-opacity">
+            <MediaDownloadButton mediaUrl={photos[0].url} mediaType="photo" filename={`tweet-${tweet.id}`} />
+          </div>
+        </div>
+      )}
+
+      {photos.length === 2 && (
+        <div class="grid grid-cols-2 gap-0.5 bg-black/40">
+          {photos.map((p, idx) => (
+            <div class="relative overflow-hidden h-64">
+              <img 
+                src={p.url} 
+                alt={`Tweet photo ${idx + 1}`} 
+                loading="lazy"
+                class="tweet-lightbox-img tweet-media-img h-full w-full object-cover cursor-zoom-in transition-transform duration-300 hover:scale-105"
+                data-full-img={p.url}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {photos.length === 3 && (
+        <div class="grid grid-cols-3 gap-0.5 bg-black/40 h-72">
+          <div class="col-span-2 relative overflow-hidden h-full">
+            <img 
+              src={photos[0].url} 
+              alt="Tweet photo 1" 
+              loading="lazy"
+              class="tweet-lightbox-img tweet-media-img h-full w-full object-cover cursor-zoom-in transition-transform duration-300 hover:scale-105"
+              data-full-img={photos[0].url}
+            />
+          </div>
+          <div class="col-span-1 grid grid-rows-2 gap-0.5 h-full">
+            {photos.slice(1).map((p, idx) => (
+              <div class="relative overflow-hidden h-full">
+                <img 
+                  src={p.url} 
+                  alt={`Tweet photo ${idx + 2}`} 
+                  loading="lazy"
+                  class="tweet-lightbox-img tweet-media-img h-full w-full object-cover cursor-zoom-in transition-transform duration-300 hover:scale-105"
+                  data-full-img={p.url}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {photos.length >= 4 && (
+        <div class="grid grid-cols-2 gap-0.5 bg-black/40 h-72">
+          {photos.slice(0, 4).map((p, idx) => (
+            <div class="relative overflow-hidden h-full">
+              <img 
+                src={p.url} 
+                alt={`Tweet photo ${idx + 1}`} 
+                loading="lazy"
+                class="tweet-lightbox-img tweet-media-img h-full w-full object-cover cursor-zoom-in transition-transform duration-300 hover:scale-105"
+                data-full-img={p.url}
+              />
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )}
 
+  <!-- Embedded MP4 Videos / HLS Streams / GIFs Rendering -->
   {videos.length > 0 && (
-    <div class="mb-4 rounded-md overflow-hidden border border-hairline bg-canvas">
+    <div class="mb-4 rounded-lg overflow-hidden border border-hairline bg-black relative group/vid">
       {videos.map((vid) => (
-        <video 
-          controls 
-          preload="metadata"
-          poster={vid.thumbnail_url}
-          class="w-full max-h-[450px] object-contain bg-black"
-        >
-          <source src={vid.url} type="video/mp4" />
-          Your browser does not support video playback.
-        </video>
+        <div class="relative">
+          <video 
+            controls 
+            preload="metadata"
+            poster={vid.thumbnail_url}
+            class="tweet-video w-full max-h-[480px] object-contain bg-black"
+            data-hls-src={vid.hls_url || undefined}
+          >
+            <source src={vid.url} type="video/mp4" />
+            Your browser does not support HTML5 MP4 video playback.
+          </video>
+          <div class="p-2 bg-canvas-soft-2 border-t border-hairline flex items-center justify-between">
+            <span class="font-mono text-[11px] text-mute flex items-center space-x-1">
+              <span class="h-2 w-2 rounded-full bg-cyan"></span>
+              <span data-i18n="mp4_stream">Direct MP4 Video Stream</span>
+            </span>
+            <MediaDownloadButton mediaUrl={vid.url} mediaType="video" filename={`video-${tweet.id}`} />
+          </div>
+        </div>
       ))}
     </div>
   )}
 
-  <!-- Footer Stats & Actions -->
+  <!-- Footer Stats & Actions Bar -->
   <div class="flex items-center justify-between border-t border-hairline pt-3 text-xs text-mute font-mono">
-    <!-- Engagement Stats -->
+    <!-- Engagement Metrics -->
     <div class="flex items-center space-x-4">
       {tweet.replies !== undefined && (
         <span class="flex items-center space-x-1" title="Replies">
@@ -137,10 +214,150 @@ const videos = tweet.media?.videos || [];
       href={`/status/${tweet.id}`}
       class="inline-flex items-center space-x-1 text-xs text-link hover:underline font-sans"
     >
-      <span>View Thread</span>
+      <span data-i18n="view_thread">View Thread &amp; Export</span>
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-3 w-3">
         <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
       </svg>
     </a>
   </div>
 </article>
+
+<!-- Global Lightbox Modal + HLS Player + Error Fallback Initialization -->
+<script>
+  // Graceful error fallback for broken/expired images
+  function setupMediaFallbacks() {
+    const images = document.querySelectorAll('.tweet-media-img');
+    images.forEach((img) => {
+      if ((img as any).__fallbackBound) return;
+      (img as any).__fallbackBound = true;
+      img.addEventListener('error', () => {
+        const parent = img.parentElement;
+        if (parent) {
+          parent.innerHTML = '<div class="flex items-center justify-center h-48 bg-[var(--theme-canvas-soft-2)] text-[var(--theme-mute)] text-xs font-mono gap-2"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-5 w-5"><path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0 0 22.5 18.75V5.25A2.25 2.25 0 0 0 20.25 3H3.75A2.25 2.25 0 0 0 1.5 5.25v13.5A2.25 2.25 0 0 0 3.75 21Z"/></svg>Media unavailable</div>';
+        }
+      }, { once: true });
+    });
+  }
+
+  // Lightbox with keyboard controls
+  function setupLightboxes() {
+    const images = document.querySelectorAll('.tweet-lightbox-img');
+
+    images.forEach((img) => {
+      if ((img as any).__lightboxBound) return;
+      (img as any).__lightboxBound = true;
+
+      img.addEventListener('click', (e) => {
+        e.preventDefault();
+        const fullSrc = (img as HTMLImageElement).dataset.fullImg || (img as HTMLImageElement).src;
+
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 cursor-zoom-out';
+        modal.style.animation = 'fadeIn 0.2s ease';
+        modal.innerHTML = `
+          <div class="relative max-w-5xl max-h-[90vh] overflow-hidden rounded-lg">
+            <img src="${fullSrc}" class="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl" alt="Enlarged tweet image" />
+            <button type="button" class="absolute top-2 right-2 rounded-full bg-black/70 p-2 text-white hover:bg-black transition-colors" title="Close (Esc)">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="h-5 w-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        `;
+
+        const closeModal = () => {
+          if (document.body.contains(modal)) {
+            document.body.removeChild(modal);
+          }
+          document.removeEventListener('keydown', handleKey);
+        };
+
+        const handleKey = (ev: KeyboardEvent) => {
+          if (ev.key === 'Escape') closeModal();
+        };
+
+        modal.onclick = closeModal;
+        document.addEventListener('keydown', handleKey);
+        document.body.appendChild(modal);
+      });
+    });
+  }
+
+  // HLS.js lazy loader for .m3u8 streams
+  function setupHLSPlayers() {
+    const videos = document.querySelectorAll<HTMLVideoElement>('video.tweet-video[data-hls-src]');
+    if (videos.length === 0) return;
+
+    videos.forEach((video) => {
+      if ((video as any).__hlsBound) return;
+      (video as any).__hlsBound = true;
+
+      const hlsSrc = video.dataset.hlsSrc;
+      if (!hlsSrc) return;
+
+      // Check if native HLS is supported (Safari)
+      if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = hlsSrc;
+        return;
+      }
+
+      // Lazy-load hls.js from CDN on first play
+      const loadHls = () => {
+        if ((window as any).Hls) {
+          initHls(video, hlsSrc);
+          return;
+        }
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js';
+        script.onload = () => initHls(video, hlsSrc);
+        script.onerror = () => {
+          console.warn('HLS.js failed to load, falling back to MP4');
+        };
+        document.head.appendChild(script);
+      };
+
+      video.addEventListener('play', loadHls, { once: true });
+    });
+  }
+
+  function initHls(video: HTMLVideoElement, src: string) {
+    const Hls = (window as any).Hls;
+    if (!Hls || !Hls.isSupported()) return;
+
+    const hls = new Hls({ maxBufferLength: 30, maxMaxBufferLength: 60 });
+    hls.loadSource(src);
+    hls.attachMedia(video);
+    hls.on(Hls.Events.MANIFEST_PARSED, () => {
+      video.play().catch(() => {});
+    });
+    hls.on(Hls.Events.ERROR, (_: any, data: any) => {
+      if (data.fatal) {
+        console.warn('HLS fatal error, falling back to MP4');
+        hls.destroy();
+      }
+    });
+  }
+
+  // Make globally accessible for dynamic Load More
+  (window as any).__setupLightboxes = () => {
+    setupLightboxes();
+    setupMediaFallbacks();
+    setupHLSPlayers();
+  };
+
+  setupMediaFallbacks();
+  setupLightboxes();
+  setupHLSPlayers();
+  document.addEventListener('astro:page-load', () => {
+    setupMediaFallbacks();
+    setupLightboxes();
+    setupHLSPlayers();
+  });
+</script>
+
+<style>
+  @keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+  }
+</style>

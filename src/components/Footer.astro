@@ -15,31 +15,31 @@ const currentYear = new Date().getFullYear();
           </div>
           <span class="font-sans text-sm font-semibold tracking-tight text-ink">My Tweet Viewer</span>
         </div>
-        <p class="text-xs text-body leading-relaxed">
+        <p class="text-xs text-body leading-relaxed" data-i18n="footer_brand_desc">
           The privacy-first, zero-tracking web viewer and media downloader for Twitter/X public content.
         </p>
         <div class="inline-flex items-center space-x-2 rounded border border-hairline bg-canvas-soft-2 px-2.5 py-1 text-[11px] font-mono text-mute">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-3.5 w-3.5 text-emerald-400">
             <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
           </svg>
-          <span>No Cookies &bull; No Tracking</span>
+          <span data-i18n="footer_no_cookies">No Cookies &bull; No Tracking</span>
         </div>
       </div>
 
       <!-- Column 2: Product -->
       <div class="space-y-3">
-        <h4 class="font-mono text-xs uppercase tracking-wider text-mute">Product</h4>
+        <h4 class="font-mono text-xs uppercase tracking-wider text-mute" data-i18n="footer_product">Product</h4>
         <ul class="space-y-2 text-xs text-body">
-          <li><a href="/" class="hover:text-ink transition-colors">Anonymous Search</a></li>
-          <li><a href="/#favorites" class="hover:text-ink transition-colors">Local Favorites</a></li>
-          <li><a href="/#features" class="hover:text-ink transition-colors">Media Downloader</a></li>
-          <li><a href="/#faq" class="hover:text-ink transition-colors">Thread Unroller</a></li>
+          <li><a href="/" class="hover:text-ink transition-colors" data-i18n="footer_anon_search">Anonymous Search</a></li>
+          <li><a href="/#favorites" class="hover:text-ink transition-colors" data-i18n="footer_local_favorites">Local Favorites</a></li>
+          <li><a href="/#features" class="hover:text-ink transition-colors" data-i18n="footer_media_downloader">Media Downloader</a></li>
+          <li><a href="/#faq" class="hover:text-ink transition-colors" data-i18n="footer_thread_unroller">Thread Unroller</a></li>
         </ul>
       </div>
 
       <!-- Column 3: Features -->
       <div class="space-y-3">
-        <h4 class="font-mono text-xs uppercase tracking-wider text-mute">Architecture</h4>
+        <h4 class="font-mono text-xs uppercase tracking-wider text-mute" data-i18n="footer_architecture">Architecture</h4>
         <ul class="space-y-2 text-xs text-body">
           <li><span class="text-mute">Platform:</span> Cloudflare Workers</li>
           <li><span class="text-mute">Framework:</span> Astro SSR</li>
@@ -50,8 +50,8 @@ const currentYear = new Date().getFullYear();
 
       <!-- Column 4: Disclaimer & Legal -->
       <div class="space-y-3">
-        <h4 class="font-mono text-xs uppercase tracking-wider text-mute">Disclaimer</h4>
-        <p class="text-xs text-mute/80 leading-relaxed">
+        <h4 class="font-mono text-xs uppercase tracking-wider text-mute" data-i18n="footer_disclaimer">Disclaimer</h4>
+        <p class="text-xs text-mute/80 leading-relaxed" data-i18n="footer_disclaimer_text">
           My Tweet Viewer is an independent web tool and is not affiliated with, endorsed by, or sponsored by X Corp or Twitter, Inc. All trademarks belong to their respective owners.
         </p>
       </div>
@@ -59,8 +59,8 @@ const currentYear = new Date().getFullYear();
 
     <!-- Bottom Row -->
     <div class="mt-12 flex flex-col items-center justify-between border-t border-hairline pt-6 text-xs text-mute sm:flex-row">
-      <p>&copy; {currentYear} mytweetviewer.com. All rights reserved.</p>
-      <p class="font-mono text-[11px] mt-2 sm:mt-0">Built for speed &amp; privacy</p>
+      <p>&copy; {currentYear} mytweetviewer.com. <span data-i18n="footer_rights">All rights reserved.</span></p>
+      <p class="font-mono text-[11px] mt-2 sm:mt-0" data-i18n="footer_built_for">Built for speed &amp; privacy</p>
     </div>
   </div>
 </footer>

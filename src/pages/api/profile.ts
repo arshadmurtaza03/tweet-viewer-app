@@ -1,14 +1,14 @@
 import type { APIRoute } from 'astro';
-import { fetchFixTweetProfile, fetchTimelinePage } from '../../../lib/fxtwitter';
+import { fetchFixTweetProfile } from '../../lib/fxtwitter';
 
 export const prerender = false;
 
-export const GET: APIRoute = async ({ params, request }) => {
-  const { username } = params;
+export const GET: APIRoute = async ({ url, request }) => {
+  const username = url.searchParams.get('username') || url.searchParams.get('u');
 
-  if (!username || !/^[a-zA-Z0-9_]{1,15}$/.test(username)) {
+  if (!username || !/^[a-zA-Z0-9_]{1,15}$/.test(username.trim().replace(/^@/, ''))) {
     return new Response(
-      JSON.stringify({ error: 'Invalid username format' }),
+      JSON.stringify({ error: 'Invalid or missing username parameter. Usage: /api/profile?username=HANDLE' }),
       {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
@@ -16,9 +16,7 @@ export const GET: APIRoute = async ({ params, request }) => {
     );
   }
 
-  // Extract cursor from query params for pagination
-  const url = new URL(request.url);
-  const cursor = url.searchParams.get('cursor') || undefined;
+  const cleanUser = username.trim().replace(/^@/, '');
 
   // Cloudflare Edge Cache check
   const cacheKey = new Request(request.url, request);
@@ -27,7 +25,7 @@ export const GET: APIRoute = async ({ params, request }) => {
     // @ts-ignore
     cache = caches.default;
   } catch (e) {
-    // Local dev mode without Cloudflare Cache API
+    // Local dev mode fallback
   }
 
   if (cache) {
@@ -37,15 +35,7 @@ export const GET: APIRoute = async ({ params, request }) => {
     }
   }
 
-  let result;
-
-  if (cursor) {
-    // Paginated request — only fetch next page of tweets
-    result = await fetchTimelinePage(username, cursor);
-  } else {
-    // Initial request — fetch full profile + first page of tweets
-    result = await fetchFixTweetProfile(username);
-  }
+  const result = await fetchFixTweetProfile(cleanUser);
 
   if (result.error) {
     return new Response(

@@ -18,6 +18,20 @@ interface Props {
       screen_name: string;
       avatar_url?: string;
     } | null;
+    quote?: {
+      id: string;
+      text: string;
+      created_at?: string;
+      author: {
+        name: string;
+        screen_name: string;
+        avatar_url?: string;
+      };
+      media?: {
+        photos?: Array<{ url: string }>;
+        videos?: Array<{ url: string; thumbnail_url?: string; hls_url?: string }>;
+      };
+    } | null;
     replies?: number;
     retweets?: number;
     likes?: number;
@@ -36,7 +50,9 @@ const formattedDate = formatDate(tweet.created_at);
 const photos = tweet.media?.photos || [];
 const videos = tweet.media?.videos || [];
 
-const hasMedia = photos.length > 0 || videos.length > 0;
+const quote = tweet.quote;
+const quotePhotos = quote?.media?.photos || [];
+const quoteVideos = quote?.media?.videos || [];
 ---
 
 <article class="group relative rounded-lg border border-hairline bg-canvas-soft-2/50 p-4 transition-all duration-200 hover:border-hairline-strong vercel-card-glow" data-tweet-id={tweet.id}>
@@ -204,6 +220,60 @@ const hasMedia = photos.length > 0 || videos.length > 0;
           </div>
         );
       })}
+    </div>
+  )}
+
+  <!-- Embedded Quote Tweet Box -->
+  {quote && (
+    <div class="mb-4 rounded-lg border border-hairline bg-canvas p-3.5 space-y-2.5 transition-all hover:border-hairline-strong">
+      <div class="flex items-center space-x-2">
+        {quote.author.avatar_url && (
+          <img 
+            src={quote.author.avatar_url} 
+            alt={quote.author.name} 
+            loading="lazy" 
+            referrerpolicy="no-referrer" 
+            class="h-5 w-5 rounded-full object-cover border border-hairline"
+          />
+        )}
+        <a href={`/${quote.author.screen_name}`} class="font-sans text-xs font-semibold text-ink hover:underline">
+          {quote.author.name}
+        </a>
+        <span class="font-mono text-[11px] text-mute">@{quote.author.screen_name}</span>
+      </div>
+      
+      <div class="font-sans text-xs text-ink leading-relaxed break-words" set:html={formatTweetText(quote.text)} />
+
+      <!-- Quote Media Photos -->
+      {quotePhotos.length > 0 && (
+        <div class="rounded-md overflow-hidden border border-hairline bg-black/40 mt-2">
+          <img 
+            src={quotePhotos[0].url} 
+            alt="Quoted media photo" 
+            loading="lazy"
+            referrerpolicy="no-referrer"
+            class="tweet-lightbox-img tweet-media-img w-full max-h-64 object-cover cursor-zoom-in"
+            data-full-img={quotePhotos[0].url}
+          />
+        </div>
+      )}
+
+      <!-- Quote Media Videos -->
+      {quoteVideos.length > 0 && (
+        <div class="rounded-md overflow-hidden border border-hairline bg-black mt-2">
+          <video 
+            controls 
+            playsinline 
+            preload="metadata" 
+            poster={quoteVideos[0].thumbnail_url} 
+            referrerpolicy="no-referrer" 
+            class="w-full max-h-64 object-contain bg-black"
+          >
+            <source src={`/api/video-proxy?url=${encodeURIComponent(quoteVideos[0].url)}`} type="video/mp4" />
+            <source src={quoteVideos[0].url} type="video/mp4" />
+          </video>
+        </div>
+      )}
     </div>
   )}
 

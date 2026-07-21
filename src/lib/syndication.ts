@@ -6,8 +6,41 @@ export interface ParsedTimelineResult {
   error?: string;
 }
 
+function extractMediaFromDetails(mediaDetails: any[]) {
+  if (!mediaDetails || !Array.isArray(mediaDetails)) return { photos: undefined, videos: undefined };
+
+  const photos = mediaDetails
+    .filter((m: any) => m.type === 'photo')
+    .map((m: any) => ({
+      url: m.media_url_https || m.url,
+      width: m.sizes?.large?.w || m.sizes?.medium?.w,
+      height: m.sizes?.large?.h || m.sizes?.medium?.h,
+    }));
+
+  const videos = mediaDetails
+    .filter((m: any) => m.type === 'video' || m.type === 'animated_gif')
+    .map((m: any) => {
+      const variants = m.video_info?.variants || [];
+      const mp4s = variants.filter((v: any) => v.content_type === 'video/mp4');
+      const bestMp4 = mp4s.sort((a: any, b: any) => (b.bitrate || 0) - (a.bitrate || 0))[0];
+      const hlsVariants = variants.filter((v: any) => v.content_type === 'application/x-mpegURL');
+      
+      return {
+        url: bestMp4?.url || m.media_url_https,
+        thumbnail_url: m.media_url_https,
+        hls_url: hlsVariants[0]?.url || undefined,
+        aspect_ratio: m.video_info?.aspect_ratio,
+      };
+    });
+
+  return {
+    photos: photos.length > 0 ? photos : undefined,
+    videos: videos.length > 0 ? videos : undefined,
+  };
+}
+
 /**
- * Parses Twitter Syndication HTML payload (__NEXT_DATA__) into structured tweet objects with full media & retweet support.
+ * Parses Twitter Syndication HTML payload (__NEXT_DATA__) into structured tweet objects with full media, retweet & quote support.
  */
 export function parseSyndicationHtml(html: string, fallbackUsername: string): ParsedTimelineResult {
   const marker = '<script id="__NEXT_DATA__" type="application/json">';
@@ -50,31 +83,24 @@ export function parseSyndicationHtml(html: string, fallbackUsername: string): Pa
           avatar_url: rawTweet.user?.profile_image_url_https,
         } : null;
 
-        const mediaDetails = targetTweet.mediaDetails || [];
-        
-        const photos = mediaDetails
-          .filter((m: any) => m.type === 'photo')
-          .map((m: any) => ({
-            url: m.media_url_https || m.url,
-            width: m.sizes?.large?.w || m.sizes?.medium?.w,
-            height: m.sizes?.large?.h || m.sizes?.medium?.h,
-          }));
+        const media = extractMediaFromDetails(targetTweet.mediaDetails || []);
 
-        const videos = mediaDetails
-          .filter((m: any) => m.type === 'video' || m.type === 'animated_gif')
-          .map((m: any) => {
-            const variants = m.video_info?.variants || [];
-            const mp4s = variants.filter((v: any) => v.content_type === 'video/mp4');
-            const bestMp4 = mp4s.sort((a: any, b: any) => (b.bitrate || 0) - (a.bitrate || 0))[0];
-            const hlsVariants = variants.filter((v: any) => v.content_type === 'application/x-mpegURL');
-            
-            return {
-              url: bestMp4?.url || m.media_url_https,
-              thumbnail_url: m.media_url_https,
-              hls_url: hlsVariants[0]?.url || undefined,
-              aspect_ratio: m.video_info?.aspect_ratio,
-            };
-          });
+        let quote: any = null;
+        if (targetTweet.quoted_tweet) {
+          const q = targetTweet.quoted_tweet;
+          const qMedia = extractMediaFromDetails(q.mediaDetails || []);
+          quote = {
+            id: q.id_str,
+            text: q.full_text || q.text || '',
+            created_at: q.created_at,
+            author: {
+              name: q.user?.name || '',
+              screen_name: q.user?.screen_name || '',
+              avatar_url: q.user?.profile_image_url_https,
+            },
+            media: qMedia,
+          };
+        }
 
         parsedTweets.push({
           id: rawTweet.id_str,
@@ -86,13 +112,11 @@ export function parseSyndicationHtml(html: string, fallbackUsername: string): Pa
             avatar_url: targetTweet.user?.profile_image_url_https,
           },
           reposted_by: repostedBy,
+          quote: quote,
           likes: targetTweet.favorite_count || 0,
           retweets: targetTweet.retweet_count || 0,
           replies: targetTweet.reply_count || targetTweet.conversation_count || 0,
-          media: {
-            photos: photos.length > 0 ? photos : undefined,
-            videos: videos.length > 0 ? videos : undefined,
-          },
+          media: media,
           replying_to: targetTweet.in_reply_to_status_id_str ? {
             screen_name: targetTweet.in_reply_to_screen_name || '',
             post_id: targetTweet.in_reply_to_status_id_str,

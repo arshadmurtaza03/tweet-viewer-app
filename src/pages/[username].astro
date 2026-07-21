@@ -252,6 +252,42 @@ const initialTweetsCount = tweets?.length || 0;
         </div>`;
       }
 
+      let quoteCardHtml = '';
+      if (t.quote) {
+        const q = t.quote;
+        const qAvatar = q.author?.avatar_url || 'https://abs.twimg.com/sticky/default_profile_images/default_profile_normal.png';
+        const qName = escapeHtml(q.author?.name || '');
+        const qHandle = escapeHtml(q.author?.screen_name || '');
+        const qText = formatTweetText(q.text || '');
+        const qPhotos = q.media?.photos || [];
+        const qVideos = q.media?.videos || [];
+
+        let qMediaHtml = '';
+        if (qPhotos.length > 0) {
+          qMediaHtml = `<div class="rounded-md overflow-hidden border border-hairline bg-black/40 mt-2">
+            <img src="${qPhotos[0].url}" alt="Quoted image" loading="lazy" referrerpolicy="no-referrer" class="tweet-lightbox-img tweet-media-img w-full max-h-64 object-cover cursor-zoom-in" data-full-img="${qPhotos[0].url}"/>
+          </div>`;
+        } else if (qVideos.length > 0) {
+          const proxyVid = `/api/video-proxy?url=${encodeURIComponent(qVideos[0].url)}`;
+          qMediaHtml = `<div class="rounded-md overflow-hidden border border-hairline bg-black mt-2">
+            <video controls playsinline preload="metadata" poster="${qVideos[0].thumbnail_url || ''}" referrerpolicy="no-referrer" class="w-full max-h-64 object-contain bg-black">
+              <source src="${proxyVid}" type="video/mp4"/>
+              <source src="${qVideos[0].url}" type="video/mp4"/>
+            </video>
+          </div>`;
+        }
+
+        quoteCardHtml = `<div class="mb-4 rounded-lg border border-hairline bg-canvas p-3.5 space-y-2.5 transition-all hover:border-hairline-strong">
+          <div class="flex items-center space-x-2">
+            <img src="${qAvatar}" alt="${qName}" loading="lazy" referrerpolicy="no-referrer" class="h-5 w-5 rounded-full object-cover border border-hairline"/>
+            <a href="/${qHandle}" class="font-sans text-xs font-semibold text-ink hover:underline">${qName}</a>
+            <span class="font-mono text-[11px] text-mute">@${qHandle}</span>
+          </div>
+          <div class="font-sans text-xs text-ink leading-relaxed break-words">${qText}</div>
+          ${qMediaHtml}
+        </div>`;
+      }
+
       let mediaHtml = '';
 
       // Photo Grids
@@ -329,6 +365,7 @@ const initialTweetsCount = tweets?.length || 0;
           </div>
         </div>
         <div class="font-sans text-sm text-ink leading-relaxed mb-3 break-words">${textHtml}</div>
+        ${quoteCardHtml}
         ${mediaHtml}
         <div class="flex items-center justify-between border-t border-hairline pt-3 text-xs text-mute font-mono">
           <div class="flex items-center space-x-4">

@@ -65,9 +65,20 @@ const initialTweetsCount = tweets?.length || 0;
         <div class="grid grid-cols-1 gap-8 lg:grid-cols-3">
           <!-- Tweets Column (2-cols width on desktop) -->
           <div class="lg:col-span-2 space-y-6">
-            <div class="flex items-center justify-between border-b border-hairline pb-3">
-              <h2 class="font-mono text-xs uppercase tracking-wider text-mute" data-i18n="profile_feed">Profile Feed &amp; Tweets</h2>
-              <span class="font-mono text-xs text-emerald-400 font-medium">&bull; <span data-i18n="edge_active">Edge Active</span></span>
+            <!-- Competitor-Matching Profile Filter Tabs -->
+            <div class="flex items-center space-x-2 border-b border-hairline pb-3 mb-4">
+              <button id="tab-all" type="button" class="profile-tab-btn active inline-flex items-center space-x-1.5 rounded-lg bg-ink px-4 py-2 text-xs font-semibold text-on-primary transition-all">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-3.5 w-3.5"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z"/></svg>
+                <span>Tweets</span>
+              </button>
+              <button id="tab-media" type="button" class="profile-tab-btn inline-flex items-center space-x-1.5 rounded-lg border border-hairline bg-canvas-soft-2 px-4 py-2 text-xs font-medium text-ink transition-all hover:bg-canvas">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-3.5 w-3.5 text-mute"><path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"/></svg>
+                <span>Media</span>
+              </button>
+              <button id="tab-reposts" type="button" class="profile-tab-btn inline-flex items-center space-x-1.5 rounded-lg border border-hairline bg-canvas-soft-2 px-4 py-2 text-xs font-medium text-ink transition-all hover:bg-canvas">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-3.5 w-3.5 text-mute"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 0 0-3.7-3.7 48.678 48.678 0 0 0-7.324 0 4.006 4.006 0 0 0-3.7 3.7c-.017.22-.032.441-.046.662M4.5 12c0 1.232.046 2.453.138 3.662a4.006 4.006 0 0 0 3.7 3.7 48.656 48.656 0 0 0 7.324 0 4.006 4.006 0 0 0 3.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3-3m-3 3l3 3m12-3l-3-3m3 3l-3 3"/></svg>
+                <span>Reposts</span>
+              </button>
             </div>
 
             <!-- Main Tweets Container -->
@@ -224,9 +235,13 @@ const initialTweetsCount = tweets?.length || 0;
         .replace(/'/g, '&#039;');
     }
 
-    function formatTweetText(text?: string): string {
+    function formatTweetText(text?: string, hasMedia: boolean = false): string {
       if (!text) return '';
-      let s = escapeHtml(text);
+      let cleaned = text;
+      if (hasMedia) {
+        cleaned = cleaned.replace(/\s*https:\/\/t\.co\/[a-zA-Z0-9]+$/i, '');
+      }
+      let s = escapeHtml(cleaned);
       s = s.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-link hover:underline">$1</a>');
       s = s.replace(/(^|[^a-zA-Z0-9_])@([a-zA-Z0-9_]{1,15})/g, '$1<a href="/$2" class="text-link hover:underline font-medium">@$2</a>');
       s = s.replace(/(^|[^a-zA-Z0-9_])#([a-zA-Z0-9_]+)/g, '$1<a href="https://x.com/hashtag/$2" target="_blank" rel="noopener noreferrer" class="text-link hover:underline">#$2</a>');
@@ -238,9 +253,10 @@ const initialTweetsCount = tweets?.length || 0;
       const name = escapeHtml(t.author?.name || username);
       const handle = escapeHtml(t.author?.screen_name || username);
       const date = formatDate(t.created_at);
-      const textHtml = formatTweetText(t.text || '');
       const photos = t.media?.photos || [];
       const videos = t.media?.videos || [];
+      const hasMedia = photos.length > 0 || videos.length > 0;
+      const textHtml = formatTweetText(t.text || '', hasMedia);
 
       let repostBannerHtml = '';
       if (t.reposted_by) {
@@ -511,6 +527,44 @@ const initialTweetsCount = tweets?.length || 0;
         isLoading = false;
       }
     });
+
+    // Profile Filter Tabs Handler
+    const tabAll = document.getElementById('tab-all');
+    const tabMedia = document.getElementById('tab-media');
+    const tabReposts = document.getElementById('tab-reposts');
+    const tabBtns = [tabAll, tabMedia, tabReposts];
+
+    function filterFeed(mode: 'all' | 'media' | 'reposts') {
+      tabBtns.forEach(btn => {
+        if (!btn) return;
+        btn.classList.remove('bg-ink', 'text-on-primary', 'font-semibold');
+        btn.classList.add('border', 'border-hairline', 'bg-canvas-soft-2', 'text-ink', 'font-medium');
+      });
+
+      const activeBtn = mode === 'all' ? tabAll : mode === 'media' ? tabMedia : tabReposts;
+      if (activeBtn) {
+        activeBtn.classList.remove('border', 'border-hairline', 'bg-canvas-soft-2', 'text-ink', 'font-medium');
+        activeBtn.classList.add('bg-ink', 'text-on-primary', 'font-semibold');
+      }
+
+      const articles = container.querySelectorAll('article[data-tweet-id]');
+      articles.forEach((art) => {
+        const hasMedia = art.querySelector('.tweet-media-img, .tweet-video') !== null;
+        const isRepost = art.textContent?.includes('reposted') || false;
+
+        if (mode === 'all') {
+          (art as HTMLElement).style.display = '';
+        } else if (mode === 'media') {
+          (art as HTMLElement).style.display = hasMedia ? '' : 'none';
+        } else if (mode === 'reposts') {
+          (art as HTMLElement).style.display = isRepost ? '' : 'none';
+        }
+      });
+    }
+
+    if (tabAll) tabAll.addEventListener('click', () => filterFeed('all'));
+    if (tabMedia) tabMedia.addEventListener('click', () => filterFeed('media'));
+    if (tabReposts) tabReposts.addEventListener('click', () => filterFeed('reposts'));
   }
 
   initProfileTimeline();

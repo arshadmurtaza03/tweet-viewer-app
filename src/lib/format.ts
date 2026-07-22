@@ -33,11 +33,17 @@ export function formatDate(dateString?: string): string {
   }
 }
 
-export function formatTweetText(text?: string): string {
+export function formatTweetText(text?: string, hasMedia: boolean = false): string {
   if (!text) return '';
 
+  let cleaned = text;
+  if (hasMedia) {
+    // Strip trailing t.co media attachment link so raw t.co links don't clutter tweet text
+    cleaned = cleaned.replace(/\s*https:\/\/t\.co\/[a-zA-Z0-9]+$/i, '');
+  }
+
   // Sanitize raw text to prevent XSS
-  let escaped = text
+  let escaped = cleaned
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
@@ -62,6 +68,5 @@ export function formatTweetText(text?: string): string {
     '$1<a href="https://x.com/hashtag/$2" target="_blank" rel="noopener noreferrer" class="text-link hover:underline">#$2</a>'
   );
 
-  // Convert linebreaks to <br/>
   return escaped.replace(/\n/g, '<br/>');
 }

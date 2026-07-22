@@ -45,10 +45,11 @@ interface Props {
 
 const { tweet } = Astro.props;
 const avatar = tweet.author.avatar_url || tweet.author.profile_image_url || 'https://abs.twimg.com/sticky/default_profile_images/default_profile_normal.png';
-const formattedText = formatTweetText(tweet.text);
-const formattedDate = formatDate(tweet.created_at);
 const photos = tweet.media?.photos || [];
 const videos = tweet.media?.videos || [];
+const hasMedia = photos.length > 0 || videos.length > 0;
+const formattedText = formatTweetText(tweet.text, hasMedia);
+const formattedDate = formatDate(tweet.created_at);
 
 const quote = tweet.quote;
 const quotePhotos = quote?.media?.photos || [];

@@ -170,7 +170,7 @@ export async function fetchSyndicationTweet(tweetId: string): Promise<{ tweet?: 
   try {
     const res = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
         'Accept': '*/*',
         'Origin': 'https://platform.twitter.com',
         'Referer': 'https://platform.twitter.com/',
@@ -201,7 +201,7 @@ export async function fetchSyndicationTweet(tweetId: string): Promise<{ tweet?: 
 }
 
 /**
- * Fetch a paginated timeline from Twitter Syndication with parallel proxy pool rotation.
+ * Fetch a paginated timeline from Twitter Syndication with robust fallback candidate endpoints.
  */
 export async function fetchSyndicationTimeline(
   username: string,
@@ -218,63 +218,73 @@ export async function fetchSyndicationTimeline(
   }
 
   const encodedTarget = encodeURIComponent(targetUrl);
-  const guestId = `v1%3A${Date.now()}${Math.floor(Math.random() * 1000000000)}`;
+  const now = Date.now();
+  const guestCookie = `guest_id=v1%3A${now}; guest_id_marketing=v1%3A${now}; guest_id_ads=v1%3A${now}`;
   let html = '';
 
-  // Parallel fetch candidates (Direct + Proxy Pool)
-  const fetchers = [
-    // Candidate 1: Direct fetch with guest cookies
+  // Candidates array: Direct iframe fetch -> CorsProxy.io -> AllOrigins /get -> CodeTabs
+  const candidates = [
+    // Candidate 1: Direct Syndication with iframe sec-fetch headers
     async () => {
       const res = await fetch(targetUrl, {
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-          'Cookie': `guest_id=${guestId}; guest_id_marketing=${guestId}; guest_id_ads=${guestId}`,
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.9',
+          'Cookie': guestCookie,
           'Referer': 'https://platform.twitter.com/',
+          'Sec-Fetch-Dest': 'iframe',
+          'Sec-Fetch-Mode': 'navigate',
+          'Sec-Fetch-Site': 'cross-site'
         },
-        signal: AbortSignal.timeout(4000),
+        signal: AbortSignal.timeout(5000),
       });
       if (!res.ok) throw new Error(`Direct HTTP ${res.status}`);
       const text = await res.text();
       if (!text.includes('__NEXT_DATA__')) throw new Error('Direct: No __NEXT_DATA__');
       return text;
     },
-    // Candidate 2: Codetabs proxy
+
+    // Candidate 2: CorsProxy.io
     async () => {
-      const res = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodedTarget}`, {
-        signal: AbortSignal.timeout(4000),
+      const res = await fetch(`https://corsproxy.io/?${encodedTarget}`, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+        signal: AbortSignal.timeout(5000),
       });
-      if (!res.ok) throw new Error(`Codetabs HTTP ${res.status}`);
+      if (!res.ok) throw new Error(`CorsProxy HTTP ${res.status}`);
       const text = await res.text();
-      if (!text.includes('__NEXT_DATA__')) throw new Error('Codetabs: No __NEXT_DATA__');
+      if (!text.includes('__NEXT_DATA__')) throw new Error('CorsProxy: No __NEXT_DATA__');
       return text;
     },
-    // Candidate 3: AllOrigins proxy
+
+    // Candidate 3: AllOrigins /get endpoint (JSON wrapper containing contents string)
     async () => {
-      const res = await fetch(`https://api.allorigins.win/raw?url=${encodedTarget}`, {
-        signal: AbortSignal.timeout(4000),
+      const res = await fetch(`https://api.allorigins.win/get?url=${encodedTarget}`, {
+        signal: AbortSignal.timeout(5000),
       });
       if (!res.ok) throw new Error(`AllOrigins HTTP ${res.status}`);
-      const text = await res.text();
-      if (!text.includes('__NEXT_DATA__')) throw new Error('AllOrigins: No __NEXT_DATA__');
-      return text;
+      const json = await res.json();
+      if (!json.contents || !json.contents.includes('__NEXT_DATA__')) throw new Error('AllOrigins: No __NEXT_DATA__');
+      return json.contents;
     },
-    // Candidate 4: ThingProxy
+
+    // Candidate 4: CodeTabs proxy fallback
     async () => {
-      const res = await fetch(`https://thingproxy.freeboard.io/fetch/${targetUrl}`, {
-        signal: AbortSignal.timeout(4000),
+      const res = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodedTarget}`, {
+        signal: AbortSignal.timeout(5000),
       });
-      if (!res.ok) throw new Error(`ThingProxy HTTP ${res.status}`);
+      if (!res.ok) throw new Error(`CodeTabs HTTP ${res.status}`);
       const text = await res.text();
-      if (!text.includes('__NEXT_DATA__')) throw new Error('ThingProxy: No __NEXT_DATA__');
+      if (!text.includes('__NEXT_DATA__')) throw new Error('CodeTabs: No __NEXT_DATA__');
       return text;
     }
   ];
 
   try {
-    // Whichever fetcher succeeds first with valid HTML wins instantaneously
-    html = await Promise.any(fetchers.map(fn => fn()));
+    // Firing all candidates in parallel using Promise.any - whichever responds first with valid data wins!
+    html = await Promise.any(candidates.map(fn => fn()));
   } catch (allErr) {
-    // All parallel fetchers failed
+    // All candidates failed in parallel
   }
 
   if (html && html.includes('__NEXT_DATA__')) {

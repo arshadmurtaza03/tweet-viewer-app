@@ -41,6 +41,7 @@ function extractMediaFromDetails(mediaDetails: any[]) {
 
 /**
  * Parses Twitter Syndication HTML payload (__NEXT_DATA__) into structured tweet objects with full media, retweet & quote support.
+ * Automatically sorts timeline tweets by Snowflake Tweet ID descending (newest first).
  */
 export function parseSyndicationHtml(html: string, fallbackUsername: string): ParsedTimelineResult {
   const marker = '<script id="__NEXT_DATA__" type="application/json">';
@@ -124,6 +125,17 @@ export function parseSyndicationHtml(html: string, fallbackUsername: string): Pa
         });
       }
     }
+
+    // Sort all parsed tweets by Snowflake Tweet ID descending (newest tweets first)
+    parsedTweets.sort((a, b) => {
+      try {
+        const bId = BigInt(b.id);
+        const aId = BigInt(a.id);
+        return bId > aId ? 1 : bId < aId ? -1 : 0;
+      } catch {
+        return 0;
+      }
+    });
 
     if (!bottomCursor && parsedTweets.length > 0) {
       const lastId = parsedTweets[parsedTweets.length - 1].id;

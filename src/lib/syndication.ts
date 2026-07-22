@@ -201,7 +201,7 @@ export async function fetchSyndicationTweet(tweetId: string): Promise<{ tweet?: 
 }
 
 /**
- * Fetch a paginated timeline from Twitter Syndication with proxy rotation fallback.
+ * Fetch a paginated timeline from Twitter Syndication with parallel proxy pool rotation.
  */
 export async function fetchSyndicationTimeline(
   username: string,
@@ -217,55 +217,64 @@ export async function fetchSyndicationTimeline(
     targetUrl += `?cursor=${encodeURIComponent(cursor)}`;
   }
 
+  const encodedTarget = encodeURIComponent(targetUrl);
   const guestId = `v1%3A${Date.now()}${Math.floor(Math.random() * 1000000000)}`;
   let html = '';
 
-  // 1. Direct fetch with guest cookie
-  try {
-    const timelineRes = await fetch(targetUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-        'Cookie': `guest_id=${guestId}; guest_id_marketing=${guestId}; guest_id_ads=${guestId}`,
-        'Referer': 'https://platform.twitter.com/',
-      },
-    });
-
-    if (timelineRes.ok) {
-      html = await timelineRes.text();
+  // Parallel fetch candidates (Direct + Proxy Pool)
+  const fetchers = [
+    // Candidate 1: Direct fetch with guest cookies
+    async () => {
+      const res = await fetch(targetUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          'Cookie': `guest_id=${guestId}; guest_id_marketing=${guestId}; guest_id_ads=${guestId}`,
+          'Referer': 'https://platform.twitter.com/',
+        },
+        signal: AbortSignal.timeout(4000),
+      });
+      if (!res.ok) throw new Error(`Direct HTTP ${res.status}`);
+      const text = await res.text();
+      if (!text.includes('__NEXT_DATA__')) throw new Error('Direct: No __NEXT_DATA__');
+      return text;
+    },
+    // Candidate 2: Codetabs proxy
+    async () => {
+      const res = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodedTarget}`, {
+        signal: AbortSignal.timeout(4000),
+      });
+      if (!res.ok) throw new Error(`Codetabs HTTP ${res.status}`);
+      const text = await res.text();
+      if (!text.includes('__NEXT_DATA__')) throw new Error('Codetabs: No __NEXT_DATA__');
+      return text;
+    },
+    // Candidate 3: AllOrigins proxy
+    async () => {
+      const res = await fetch(`https://api.allorigins.win/raw?url=${encodedTarget}`, {
+        signal: AbortSignal.timeout(4000),
+      });
+      if (!res.ok) throw new Error(`AllOrigins HTTP ${res.status}`);
+      const text = await res.text();
+      if (!text.includes('__NEXT_DATA__')) throw new Error('AllOrigins: No __NEXT_DATA__');
+      return text;
+    },
+    // Candidate 4: ThingProxy
+    async () => {
+      const res = await fetch(`https://thingproxy.freeboard.io/fetch/${targetUrl}`, {
+        signal: AbortSignal.timeout(4000),
+      });
+      if (!res.ok) throw new Error(`ThingProxy HTTP ${res.status}`);
+      const text = await res.text();
+      if (!text.includes('__NEXT_DATA__')) throw new Error('ThingProxy: No __NEXT_DATA__');
+      return text;
     }
-  } catch (directErr) {
-    // Direct fetch failed
-  }
+  ];
 
-  // 2. Proxy Fallback 1: codetabs proxy
-  if (!html || !html.includes('__NEXT_DATA__')) {
-    try {
-      const proxyRes = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}`, {
-        signal: AbortSignal.timeout(6000),
-      });
-      if (proxyRes.ok) {
-        const text = await proxyRes.text();
-        if (text.includes('__NEXT_DATA__')) {
-          html = text;
-        }
-      }
-    } catch (pErr) {}
-  }
-
-  // 3. Proxy Fallback 2: allorigins proxy
-  if (!html || !html.includes('__NEXT_DATA__')) {
-    try {
-      const proxyRes2 = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`, {
-        signal: AbortSignal.timeout(6000),
-      });
-      if (proxyRes2.ok) {
-        const text = await proxyRes2.text();
-        if (text.includes('__NEXT_DATA__')) {
-          html = text;
-        }
-      }
-    } catch (pErr2) {}
+  try {
+    // Whichever fetcher succeeds first with valid HTML wins instantaneously
+    html = await Promise.any(fetchers.map(fn => fn()));
+  } catch (allErr) {
+    // All parallel fetchers failed
   }
 
   if (html && html.includes('__NEXT_DATA__')) {

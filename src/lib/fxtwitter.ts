@@ -45,6 +45,17 @@ export async function fetchFixTweetProfile(
 
     let finalTweets: any[] = parsedTweets.length > 0 ? parsedTweets : (data.tweets || (data.tweet ? [data.tweet] : []));
 
+    // Sort finalTweets by Snowflake Tweet ID descending (newest first)
+    finalTweets.sort((a, b) => {
+      try {
+        const bId = BigInt(b.id);
+        const aId = BigInt(a.id);
+        return bId > aId ? 1 : bId < aId ? -1 : 0;
+      } catch {
+        return 0;
+      }
+    });
+
     // 3. Media Hydration Pass: If any tweets lack media photos/videos, hydrate via status API in parallel
     if (finalTweets.length > 0) {
       const needsHydration = finalTweets.filter(t => !t.media?.photos?.length && !t.media?.videos?.length);
@@ -85,8 +96,17 @@ export async function fetchTimelinePage(
 
   let { tweets, bottom_cursor, error } = await fetchSyndicationTimeline(cleanUser, cursor);
 
-  // Hydrate media in parallel if needed
   if (tweets && tweets.length > 0) {
+    tweets.sort((a: any, b: any) => {
+      try {
+        const bId = BigInt(b.id);
+        const aId = BigInt(a.id);
+        return bId > aId ? 1 : bId < aId ? -1 : 0;
+      } catch {
+        return 0;
+      }
+    });
+
     const needsHydration = tweets.filter(t => !t.media?.photos?.length && !t.media?.videos?.length);
     if (needsHydration.length > 0) {
       await Promise.all(needsHydration.slice(0, 10).map(async (t) => {
@@ -116,7 +136,6 @@ export async function fetchFixTweetStatus(tweetId: string): Promise<{ tweet?: Fi
   }
 
   try {
-    // Try FixTweet status endpoint with screen_name wildcard
     const res = await fetch(`https://api.fxtwitter.com/i/status/${tweetId}`, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
@@ -134,7 +153,6 @@ export async function fetchFixTweetStatus(tweetId: string): Promise<{ tweet?: Fi
       }
     }
 
-    // Fallback to react-tweet endpoint
     const reactRes = await fetch(`https://react-tweet.vercel.app/api/tweet/${tweetId}`);
     if (reactRes.ok) {
       const reactData = await reactRes.json();

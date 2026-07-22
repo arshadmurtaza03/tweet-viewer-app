@@ -22,7 +22,8 @@ const seo = user ? buildProfileSeo(user.screen_name, user.name, user.description
 if (error || !user) {
   Astro.response.status = 404;
 } else {
-  Astro.response.headers.set('Cache-Control', 'public, max-age=1800, stale-while-revalidate=300');
+  // Set zero-cache headers so browser always receives fresh, real-time tweets
+  Astro.response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
 }
 
 const ssrHasMedia = tweets?.some(t => (t.media?.photos && t.media.photos.length > 0) || (t.media?.videos && t.media.videos.length > 0)) || false;
@@ -77,7 +78,7 @@ const initialTweetsCount = tweets?.length || 0;
             </div>
 
             <!-- Loading Spinner Placeholder for Client Sourcing -->
-            <div id="client-loading-spinner" class={`py-12 text-center ${initialTweetsCount > 0 && ssrHasMedia ? 'hidden' : ''}`}>
+            <div id="client-loading-spinner" class="py-12 text-center hidden">
               <div class="inline-flex items-center space-x-3 rounded-full border border-hairline bg-canvas-soft-2 px-5 py-2.5 shadow-sm">
                 <svg class="h-4 w-4 animate-spin text-link" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -393,17 +394,18 @@ const initialTweetsCount = tweets?.length || 0;
       return { tweets: data.tweets || [], bottom_cursor: data.bottom_cursor };
     }
 
-    const ssrHasMedia = container.dataset.ssrHasMedia === 'true';
     const initialCount = container.children.length;
 
-    // Sourcing timeline & media on initial load
-    if (initialCount === 0 || !ssrHasMedia) {
-      if (spinner) spinner.classList.remove('hidden');
-      
-      fetchTimelineFromGateway()
-        .then(({ tweets, bottom_cursor }) => {
-          if (spinner) spinner.classList.add('hidden');
-          if (tweets.length > 0) {
+    // Client-side timeline fetch to guarantee fresh, sorted tweets & media
+    fetchTimelineFromGateway()
+      .then(({ tweets, bottom_cursor }) => {
+        if (spinner) spinner.classList.add('hidden');
+        if (tweets.length > 0) {
+          // Compare if fetched tweets are newer than existing initial cards
+          const firstFetchedId = BigInt(tweets[0].id);
+          const firstExistingId = existingCards.length > 0 ? BigInt(existingCards[0].getAttribute('data-tweet-id') || '0') : 0n;
+
+          if (initialCount === 0 || firstFetchedId > firstExistingId) {
             container.innerHTML = '';
             seenTweetIds.clear();
             for (const t of tweets) {
@@ -418,16 +420,16 @@ const initialTweetsCount = tweets?.length || 0;
             if (typeof (window as any).__setupLightboxes === 'function') {
               (window as any).__setupLightboxes();
             }
-          } else {
-            if (initialCount === 0 && fallback) fallback.classList.remove('hidden');
           }
-        })
-        .catch((err) => {
-          console.warn('Timeline gateway sourcing error:', err);
-          if (spinner) spinner.classList.add('hidden');
+        } else {
           if (initialCount === 0 && fallback) fallback.classList.remove('hidden');
-        });
-    }
+        }
+      })
+      .catch((err) => {
+        console.warn('Timeline gateway sourcing error:', err);
+        if (spinner) spinner.classList.add('hidden');
+        if (initialCount === 0 && fallback) fallback.classList.remove('hidden');
+      });
 
     // Load More click handler (with deduplication & max_id calculation)
     loadMoreBtn.addEventListener('click', async () => {
